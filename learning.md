@@ -826,3 +826,107 @@ This task added small timezone helpers that future check-in and missed-deadline 
 
 6. **Mental model**
    This file is the practice course for the timezone translator. It checks normal paths and tricky boundary paths before the helpers are used in real app flows.
+
+## Task 4: Auth And Profile Flow
+
+This task added the first real authentication flow: Supabase session tracking, a sign-in/create-account screen, and root navigation that sends signed-out users to auth.
+
+### `src/features/auth/auth-context.tsx`
+
+1. **What is this file for?**
+   It gives the whole app one shared place to ask "is someone signed in right now?"
+
+2. **Most important lines**
+   `createContext<AuthContextValue>({ session: null, loading: true })` creates the shared auth state. `supabase.auth.getSession()` loads any saved session when the app starts. `supabase.auth.onAuthStateChange(...)` keeps the app updated when the user signs in or signs out. `data.subscription.unsubscribe()` cleans up the listener when the provider unmounts.
+
+3. **Functions/components**
+   `AuthProvider` wraps the app and owns the `session` and `loading` state. `useAuth()` is the small helper hook screens can call to read that state without passing props through every component.
+
+4. **Connection to the app**
+   `app/_layout.tsx` wraps navigation in `AuthProvider`, so future screens can call `useAuth()` to know the current user before querying private Supabase rows.
+
+5. **What breaks if removed?**
+   The app would not know whether a user is signed in, and route protection would not have a reliable session source.
+
+6. **Mental model**
+   This file is the app's front desk. Every screen can ask the front desk who is currently checked in.
+
+### `app/_layout.tsx`
+
+1. **What is this file for?**
+   It is the root navigation shell for the Expo app.
+
+2. **Most important lines**
+   `<AuthProvider>` makes auth state available to the router. `RootStack` reads `session`, `loading`, and `segments`. The first `<Redirect href="/(auth)/sign-in" />` sends signed-out users to the sign-in screen. The second redirect sends signed-in users away from auth and back to the app tabs.
+
+3. **Functions/components**
+   `RootLayout` keeps the existing theme and status bar setup. `RootStack` decides which route group should be visible based on auth state.
+
+4. **Connection to the app**
+   Every screen passes through this layout first, so this is where auth protection belongs before challenge, goal, feed, and check-in screens are added.
+
+5. **What breaks if removed?**
+   The app could render private tabs before knowing whether the user has a valid Supabase session.
+
+6. **Mental model**
+   This file is the building entrance. If you are not signed in, it points you to the lobby. If you are signed in, it lets you into the app.
+
+### `app/(auth)/sign-in.tsx`
+
+1. **What is this file for?**
+   It renders the email/password screen for signing in or creating an account.
+
+2. **Most important lines**
+   `useState` stores the typed email, password, and loading state. `supabase.auth.signInWithPassword({ email, password })` signs in an existing user. `supabase.auth.signUp({ email, password })` creates a new account. `Alert.alert(...)` shows errors or the email-confirmation message.
+
+3. **Functions/components**
+   `SignInScreen` renders the form. `signIn()` sends the sign-in request to Supabase. `signUp()` sends the create-account request to Supabase and asks the user to confirm their email.
+
+4. **Connection to the app**
+   The route guard in `app/_layout.tsx` sends signed-out users here. When Supabase reports a successful sign-in, `AuthProvider` receives the session update and navigation can move into the main app.
+
+5. **What breaks if removed?**
+   Signed-out users would have nowhere to enter credentials or create an account.
+
+6. **Mental model**
+   This file is the login form at the front door. It collects credentials and hands them to Supabase.
+
+### `tests/auth-context.test.tsx`
+
+1. **What is this file for?**
+   It proves the auth provider loads and updates Supabase session state.
+
+2. **Most important lines**
+   The mocked `getSession` returns a fake saved session. The mocked `onAuthStateChange` captures Supabase's callback so the test can simulate a sign-in event.
+
+3. **Functions/components**
+   `wrapper` renders hooks inside `AuthProvider`. The first test checks startup session loading. The second test checks live session updates from Supabase.
+
+4. **Connection to the app**
+   These tests protect the auth state contract used by route guards and future private screens.
+
+5. **What breaks if removed?**
+   A future auth refactor could stop loading saved sessions or stop responding to sign-in events without the test suite catching it.
+
+6. **Mental model**
+   This file is a practice Supabase auth server. It sends fake auth events and checks whether the app listens correctly.
+
+### `tests/sign-in.test.tsx`
+
+1. **What is this file for?**
+   It proves the sign-in screen sends the user's email and password to the correct Supabase auth methods.
+
+2. **Most important lines**
+   `fireEvent.changeText(...)` simulates typing into the form. `fireEvent.press(...)` simulates tapping a button. The expectations check that Supabase receives the exact email and password from the screen.
+
+3. **Functions/components**
+   The first test covers existing-user sign-in. The second test covers new-account creation and the email-confirmation alert.
+
+4. **Connection to the app**
+   These tests protect the first user-facing auth screen before onboarding, profiles, and invite flows depend on signed-in users.
+
+5. **What breaks if removed?**
+   The sign-in form could stop calling Supabase correctly and tests would not catch the broken login path.
+
+6. **Mental model**
+   This file is a robot user that types credentials, presses buttons, and checks which Supabase doorbell rang.
