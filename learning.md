@@ -930,3 +930,227 @@ This task added the first real authentication flow: Supabase session tracking, a
 
 6. **Mental model**
    This file is a robot user that types credentials, presses buttons, and checks which Supabase doorbell rang.
+
+## Task 5: Challenge Creation And Invite Join
+
+This task added the first invite-only group loop: users can create a private challenge, see their challenges, join a friend group by invite code, and open a placeholder challenge detail screen.
+
+### `src/features/challenges/api.ts`
+
+1. **What is this file for?**
+   It contains the Supabase calls for challenge groups, so screens do not need to know table names or RPC details.
+
+2. **Most important lines**
+   `createChallenge(...)` calls `create_private_challenge`, so challenge creation and owner membership happen together in the database. `listMyChallenges()` selects the challenges the current user can see through RLS. `joinChallengeByInvite(...)` calls `join_challenge_by_invite_code`, which is safer than directly selecting by invite code because the database function handles private invite joining.
+
+3. **Functions/components**
+   `inviteCode()` creates an 8-character uppercase invite code. `normalizeInviteCode(code)` trims and uppercases friend-shared invite codes. `createChallenge` creates the group through an atomic database function. `listMyChallenges` loads groups for the challenge tab. `joinChallengeByInvite` joins an existing private group through the secure database function.
+
+4. **Connection to the app**
+   `app/challenges/new.tsx` uses `createChallenge`. `app/(tabs)/challenges.tsx` uses `listMyChallenges` and `joinChallengeByInvite`.
+
+5. **What breaks if removed?**
+   Challenge screens would have no shared way to create, list, or join groups.
+
+6. **Mental model**
+   This file is the challenge service desk. Screens ask it to create a room, list rooms, or enter a room with an invite code.
+
+### `app/(tabs)/challenges.tsx`
+
+1. **What is this file for?**
+   It is the main Challenges tab where a user sees existing friend groups and joins a group by invite code.
+
+2. **Most important lines**
+   `useFocusEffect(...)` loads groups whenever the tab becomes active. `joinChallenge()` validates the invite code, calls the API, and routes to the joined challenge. `FlatList` renders the user's challenge rows.
+
+3. **Functions/components**
+   `ChallengesScreen` owns the list, invite-code input, and loading states. `loadChallenges()` fetches visible groups and avoids setting state after the screen is no longer active. `joinChallenge()` joins a group and navigates to its detail route.
+
+4. **Connection to the app**
+   `app/(tabs)/_layout.tsx` exposes this screen as a tab. It depends on the challenge API and routes into `app/challenges/[challengeId].tsx`.
+
+5. **What breaks if removed?**
+   Users would not have a central place to find or join challenge groups.
+
+6. **Mental model**
+   This file is the user's group lobby. It shows rooms they belong to and lets them enter a new room with a code.
+
+### `app/challenges/new.tsx`
+
+1. **What is this file for?**
+   It renders the form for creating a new private challenge group.
+
+2. **Most important lines**
+   `useAuth()` confirms there is a signed-in user before creation. `createChallenge({ description, name })` creates the group, while the database uses `auth.uid()` as the owner. `router.push(...)` sends the user to the new challenge after creation.
+
+3. **Functions/components**
+   `NewChallengeScreen` renders the name and description fields. `submit()` validates sign-in and challenge name, calls the API, and handles success or error alerts.
+
+4. **Connection to the app**
+   The Challenges tab links here through `/challenges/new`. The created challenge becomes part of the same data model that future goals and check-ins attach to.
+
+5. **What breaks if removed?**
+   Users could join existing groups but could not start their own friend group.
+
+6. **Mental model**
+   This file is the room builder. The user gives the room a name and the app creates a private space with an invite code.
+
+### `app/challenges/[challengeId].tsx`
+
+1. **What is this file for?**
+   It is the placeholder detail page for one challenge.
+
+2. **Most important lines**
+   `useLocalSearchParams<{ challengeId: string }>()` reads the challenge ID from the route. The body text makes clear that goals, members, check-ins, and feed activity will connect here in later tasks.
+
+3. **Functions/components**
+   `ChallengeDetailScreen` renders the current challenge route ID and sets up the place where the challenge experience will grow.
+
+4. **Connection to the app**
+   Create and join flows route here after success. Later tasks will replace the placeholder with challenge goals, members, feed, and check-ins.
+
+5. **What breaks if removed?**
+   Successful create/join flows would route to a missing screen.
+
+6. **Mental model**
+   This file is an empty room with the room number on the wall. Later tasks will add furniture.
+
+### `app/(tabs)/_layout.tsx`
+
+1. **What is this file for?**
+   It defines which screens appear in the bottom tab bar.
+
+2. **Most important lines**
+   The new `Tabs.Screen` with `name="challenges"` registers the Challenges tab. Its icon uses `person.3.fill` to represent friend groups.
+
+3. **Functions/components**
+   `TabLayout` returns the tab navigator. Each `Tabs.Screen` entry adds one tab.
+
+4. **Connection to the app**
+   This makes `app/(tabs)/challenges.tsx` reachable from the main signed-in navigation.
+
+5. **What breaks if removed?**
+   The Challenges screen file could exist, but users would not see it in the tab bar.
+
+6. **Mental model**
+   This file is the app's bottom menu. Adding a screen here adds another button to that menu.
+
+### `app/_layout.tsx`
+
+1. **What is this file for?**
+   It is the root navigation shell for the Expo app.
+
+2. **Most important lines**
+   The new `Stack.Screen` entries for `challenges/[challengeId]` and `challenges/new` register the challenge detail and create screens with titles.
+
+3. **Functions/components**
+   `RootStack` still handles auth redirects and now also knows about challenge routes outside the tab group.
+
+4. **Connection to the app**
+   This lets create/join flows navigate to `/challenges/new` and `/challenges/:challengeId`.
+
+5. **What breaks if removed?**
+   Challenge routes may still exist on disk, but the root stack would not provide their intended navigation headers.
+
+6. **Mental model**
+   This file is the building map. The Task 5 change adds two new rooms to the map.
+
+### `components/ui/icon-symbol.tsx`
+
+1. **What is this file for?**
+   It maps iOS SF Symbol names to Material Icons for Android and web.
+
+2. **Most important lines**
+   `'person.3.fill': 'groups'` teaches Android/web how to render the new Challenges tab icon.
+
+3. **Functions/components**
+   `IconSymbol` receives a symbol-style name and renders the matching Material Icon fallback outside iOS.
+
+4. **Connection to the app**
+   `app/(tabs)/_layout.tsx` uses `IconSymbol` for the Challenges tab icon.
+
+5. **What breaks if removed?**
+   Android/web could render an undefined icon name for the Challenges tab.
+
+6. **Mental model**
+   This file is an icon dictionary. iOS and Android speak different icon languages, so this translates between them.
+
+### `tests/challenges-api.test.ts`
+
+1. **What is this file for?**
+   It proves the challenge API talks to Supabase using the expected tables and secure RPC.
+
+2. **Most important lines**
+   The create test checks trimmed name/description, invite-code shape, and the atomic `create_private_challenge` RPC. The join test checks that invite joining uses `join_challenge_by_invite_code`.
+
+3. **Functions/components**
+   Each test mocks Supabase's client and verifies one API behavior: create, list, or join.
+
+4. **Connection to the app**
+   These tests protect the data layer used by challenge screens.
+
+5. **What breaks if removed?**
+   A future change could accidentally split challenge creation back into two client writes or join by direct invite-code lookup without tests catching it.
+
+6. **Mental model**
+   This file is a fake Supabase counter. It watches which database window the API walks up to.
+
+### `supabase/migrations/0001_initial_schema.sql`
+
+1. **What is this file for?**
+   It defines the database schema, privacy rules, and safe database functions for the app.
+
+2. **Most important lines**
+   `create_private_challenge(...)` creates a profile if needed, inserts the challenge, and inserts the creator as owner in one database transaction. `join_challenge_by_invite_code(...)` also creates a profile if needed before adding membership. Both functions use `auth.uid()` so the client cannot pretend to be another user.
+
+3. **Functions/components**
+   `create_private_challenge` is the safe challenge creation path. `join_challenge_by_invite_code` is the safe invite join path. The profile bootstrap inserts `auth.uid()` with a display name derived from the email prefix or `Friend`.
+
+4. **Connection to the app**
+   `src/features/challenges/api.ts` calls these functions. The screens get simpler because the database handles the multi-row safety rules.
+
+5. **What breaks if removed?**
+   New users may fail to create or join challenges because they might not have a `profiles` row yet. Challenge creation could also leave behind a group without owner membership if split into separate client writes.
+
+6. **Mental model**
+   This migration is the locked room builder. It creates the user's badge, creates the room, and makes the user the owner before handing the room back to the app.
+
+### `tests/rls.test.ts`
+
+1. **What is this file for?**
+   It checks the SQL migration text for the privacy and safety rules the app relies on.
+
+2. **Most important lines**
+   The new challenge function test checks that `create_private_challenge` inserts both `challenges` and `challenge_members`. The invite join bootstrap test checks that joining can create a missing profile and uses `on conflict (id) do nothing`.
+
+3. **Functions/components**
+   `normalizedSql()` makes SQL text comparisons consistent. The new `it(...)` blocks protect the database function contracts added for Task 5.
+
+4. **Connection to the app**
+   These tests protect the Supabase functions called by `src/features/challenges/api.ts`.
+
+5. **What breaks if removed?**
+   A future migration edit could remove profile bootstrap or atomic challenge creation without normal UI tests catching the database-level regression.
+
+6. **Mental model**
+   This file is a database rule inspector. It reads the lock instructions and confirms the important locks are still written down.
+
+### `tests/challenges-screens.test.tsx`
+
+1. **What is this file for?**
+   It proves the challenge screens call the right APIs when a user creates or joins a group.
+
+2. **Most important lines**
+   `fireEvent.changeText(...)` fills form inputs. `fireEvent.press(...)` taps buttons. The expectations check the exact API input and navigation path.
+
+3. **Functions/components**
+   The first test covers creating a challenge from the new screen. The second test covers loading challenges and joining by invite code from the tab.
+
+4. **Connection to the app**
+   These tests protect the first complete challenge loop before goals and check-ins are added.
+
+5. **What breaks if removed?**
+   The UI could stop passing the challenge form values, invite code, or route target correctly without the test suite catching it.
+
+6. **Mental model**
+   This file is a robot friend. It opens the challenge screens, types into forms, taps buttons, and checks that the app goes to the right room.

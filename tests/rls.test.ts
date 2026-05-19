@@ -61,6 +61,20 @@ describe('row level security migration', () => {
     expect(sql).toContain('create or replace function public.join_challenge_by_invite_code');
   });
 
+  it('creates private challenges and owner membership in one database function', () => {
+    expect(sql).toContain('create or replace function public.create_private_challenge');
+    expect(sql).toContain('insert into public.profiles');
+    expect(sql).toContain('insert into public.challenges');
+    expect(sql).toContain('insert into public.challenge_members');
+    expect(sql).toContain("values (target_challenge.id, auth.uid(), 'owner')");
+  });
+
+  it('bootstraps a missing profile before invite joins', () => {
+    expect(sql).toContain('create or replace function public.join_challenge_by_invite_code');
+    expect(sql).toContain('insert into public.profiles');
+    expect(sql).toContain('on conflict (id) do nothing');
+  });
+
   it('requires normalized invite codes with enough entropy for MVP invites', () => {
     expect(sql).toContain("invite_code text not null unique check (invite_code ~ '^[a-z0-9]{8,16}$')");
     expect(sql).toContain('where invite_code = upper(trim(target_invite_code))');

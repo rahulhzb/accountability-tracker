@@ -116,6 +116,47 @@ as $$
   );
 $$;
 
+create or replace function public.create_private_challenge(
+  target_name text,
+  target_description text,
+  target_invite_code text
+)
+returns public.challenges
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  target_challenge public.challenges;
+begin
+  if auth.uid() is null then
+    raise exception 'Authentication required';
+  end if;
+
+  insert into public.profiles (id, display_name)
+  values (
+    auth.uid(),
+    coalesce(nullif(split_part(auth.jwt() ->> 'email', '@', 1), ''), 'Friend')
+  )
+  on conflict (id) do nothing;
+
+  insert into public.challenges (name, description, created_by, invite_code)
+  values (
+    trim(target_name),
+    trim(target_description),
+    auth.uid(),
+    upper(trim(target_invite_code))
+  )
+  returning *
+  into target_challenge;
+
+  insert into public.challenge_members (challenge_id, user_id, role)
+  values (target_challenge.id, auth.uid(), 'owner');
+
+  return target_challenge;
+end;
+$$;
+
 create or replace function public.join_challenge_by_invite_code(target_invite_code text)
 returns public.challenges
 language plpgsql
@@ -128,6 +169,13 @@ begin
   if auth.uid() is null then
     raise exception 'Authentication required';
   end if;
+
+  insert into public.profiles (id, display_name)
+  values (
+    auth.uid(),
+    coalesce(nullif(split_part(auth.jwt() ->> 'email', '@', 1), ''), 'Friend')
+  )
+  on conflict (id) do nothing;
 
   select *
   into target_challenge
