@@ -718,3 +718,67 @@ Changed files:
 
 6. **Mental model**  
    These are the app's starter pictures and badges.
+
+## Task 2: Supabase Schema And Security Model
+
+This task created the database blueprint for the MVP and documented how private data stays private.
+
+### `supabase/migrations/0001_initial_schema.sql`
+
+1. **What is this file for?**
+   It tells Supabase/Postgres how to create the app's database tables, relationships, indexes, and row-level security rules.
+
+2. **Most important lines**
+   The `create table` blocks define the main app objects: `profiles`, `challenges`, `challenge_members`, `goals`, `check_ins`, `feed_events`, `comments`, and `device_tokens`. The `alter table ... enable row level security` lines turn on database-level privacy. The `create policy` lines define who can read or write each row.
+
+3. **Functions/components**
+   `public.is_challenge_member(target_challenge_id uuid)` answers "is the signed-in user a member of this challenge?" and is reused by many RLS policies. `public.join_challenge_by_invite_code(target_invite_code text)` lets a signed-in user join a private challenge by invite code without allowing unsafe direct membership inserts by guessed challenge ID.
+
+4. **Connection to the app**
+   Future auth, challenge, goal, check-in, feed, comment, and notification code will read and write these tables through the Supabase client in `src/lib/supabase.ts`.
+
+5. **What breaks if removed?**
+   The app has no backend data model. Screens might render, but users could not safely store profiles, challenges, goals, check-ins, comments, or push tokens.
+
+6. **Mental model**
+   This is the locked filing cabinet for the app. Tables are drawers, foreign keys connect related folders, and RLS policies are the locks that only open for the right user.
+
+### `docs/runbooks/security.md`
+
+1. **What is this file for?**
+   It explains the app's security model in plain language for developers and operators.
+
+2. **Most important lines**
+   The "Data Boundaries" section explains which data is private to a user and which data is shared with challenge members. The "Critical Direct-Object-Reference Checks" section lists the main bugs we must avoid, like reading another user's personal goals or joining a challenge by guessed ID.
+
+3. **Functions/components**
+   No code functions live here. It references the database function `public.join_challenge_by_invite_code(invite_code)` so future challenge-join code uses the safe path.
+
+4. **Connection to the app**
+   Future features should match this document when they query Supabase. If app code tries to bypass these rules, RLS should reject it.
+
+5. **What breaks if removed?**
+   The database still works, but future developers lose the simple explanation of the privacy rules and may accidentally design unsafe flows.
+
+6. **Mental model**
+   This is the safety checklist next to the database. Before adding a feature, read it and ask whether the current user should really see or change that row.
+
+### `tests/rls.test.ts`
+
+1. **What is this file for?**
+   It checks the migration text for the most important RLS rules without needing Docker or a live Supabase database.
+
+2. **Most important lines**
+   `readFileSync(migrationPath, 'utf8')` loads the SQL migration. The tests check that every app table enables RLS, challenge reads require membership, personal goals stay owner-only, feed reads require membership, direct membership self-join is not allowed, check-ins require goal ownership, and comments/device tokens stay inside the authenticated user's boundary.
+
+3. **Functions/components**
+   `normalizedSql()` makes SQL spacing easier to test by collapsing whitespace and lowercasing the file. Each `it(...)` block is a Jest test for one security expectation.
+
+4. **Connection to the app**
+   These tests protect the database contract that future app screens and API helpers depend on.
+
+5. **What breaks if removed?**
+   A future migration edit could accidentally weaken RLS and the normal Jest suite would not catch the missing security rule.
+
+6. **Mental model**
+   This is a smoke alarm for the database locks. It does not open a real Supabase instance, but it warns us if the lock instructions disappear from the migration.
