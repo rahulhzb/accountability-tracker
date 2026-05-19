@@ -33,6 +33,7 @@ function RootStack() {
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="challenges/[challengeId]" options={{ title: 'Challenge' }} />
       <Stack.Screen name="challenges/new" options={{ title: 'New Challenge' }} />
+      <Stack.Screen name="check-ins/[goalId]" options={{ title: 'Check In' }} />
       <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
     </Stack>
   );

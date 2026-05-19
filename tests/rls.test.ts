@@ -75,6 +75,14 @@ describe('row level security migration', () => {
     expect(sql).toContain('on conflict (id) do nothing');
   });
 
+  it('creates goals through a profile-bootstrapping database function', () => {
+    expect(sql).toContain('create or replace function public.create_goal');
+    expect(sql).toContain('insert into public.profiles');
+    expect(sql).toContain('insert into public.goals');
+    expect(sql).toContain('owner_user_id, challenge_id, title, deadline_time, timezone');
+    expect(sql).toContain('auth.uid()');
+  });
+
   it('requires normalized invite codes with enough entropy for MVP invites', () => {
     expect(sql).toContain("invite_code text not null unique check (invite_code ~ '^[a-z0-9]{8,16}$')");
     expect(sql).toContain('where invite_code = upper(trim(target_invite_code))');
@@ -82,6 +90,12 @@ describe('row level security migration', () => {
 
   it('prevents check-ins for goals owned by another user', () => {
     const policy = policySql('checkins owner insert');
+    expect(policy).toContain('user_id = auth.uid()');
+    expect(policy).toContain('g.owner_user_id = auth.uid()');
+  });
+
+  it('allows owners to update today check-ins through upsert only for their own goals', () => {
+    const policy = policySql('checkins owner update');
     expect(policy).toContain('user_id = auth.uid()');
     expect(policy).toContain('g.owner_user_id = auth.uid()');
   });

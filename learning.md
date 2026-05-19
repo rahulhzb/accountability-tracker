@@ -1154,3 +1154,247 @@ This task added the first invite-only group loop: users can create a private cha
 
 6. **Mental model**
    This file is a robot friend. It opens the challenge screens, types into forms, taps buttons, and checks that the app goes to the right room.
+
+## Task 6: Goals And Daily Check-Ins
+
+This task added the personal tracker loop: users can create daily personal goals, see active goals, and submit one daily check-in as done or skipped with an optional note.
+
+### `src/features/goals/api.ts`
+
+1. **What is this file for?**
+   It contains the Supabase calls for creating and listing goals.
+
+2. **Most important lines**
+   `createGoal(...)` calls the `create_goal` database function instead of inserting directly. This lets the database create a missing profile row and use `auth.uid()` as the real owner. `listActiveGoals(userId)` loads active goals for the current user, ordered newest first.
+
+3. **Functions/components**
+   `createGoal` creates a personal or challenge goal. `listActiveGoals` fetches goals with `status = active`.
+
+4. **Connection to the app**
+   `app/(tabs)/personal.tsx` uses this API to add personal goals and refresh the goal list.
+
+5. **What breaks if removed?**
+   The personal tracker screen would have no shared way to create or load goals.
+
+6. **Mental model**
+   This file is the goal service desk. Screens ask it to create a goal or show the user's current goal list.
+
+### `src/features/check-ins/api.ts`
+
+1. **What is this file for?**
+   It contains the Supabase call for submitting today's check-in.
+
+2. **Most important lines**
+   `getLocalDateKey(now, input.timezone)` computes the user's local day. `.upsert(..., { onConflict: 'goal_id,local_date' })` ensures one check-in per goal per local date. `note: input.note.trim() || null` stores blank notes as `null`.
+
+3. **Functions/components**
+   `submitCheckIn` creates or replaces today's check-in for a goal. It supports `done` and `skipped`; future automation will add `missed`.
+
+4. **Connection to the app**
+   `app/check-ins/[goalId].tsx` uses this API when the user taps `Mark done` or `Skip today`.
+
+5. **What breaks if removed?**
+   Users could create goals but could not report whether they kept today's commitment.
+
+6. **Mental model**
+   This file is the daily attendance sheet. It records one status for each goal on each local day.
+
+### `app/(tabs)/personal.tsx`
+
+1. **What is this file for?**
+   It is the personal tracker tab for goals that are not tied to a friend group.
+
+2. **Most important lines**
+   `useFocusEffect(...)` reloads goals when the tab becomes active. `createGoal({ challengeId: null, ... })` creates a personal goal. The typed `router.push({ pathname: '/check-ins/[goalId]', params: ... })` opens the check-in screen and passes the goal's stored timezone.
+
+3. **Functions/components**
+   `PersonalScreen` renders the add-goal form and active goal list. `loadGoals` fetches active goals for the signed-in user. `addGoal` validates the title, creates the goal, clears the input, and reloads the list. The check-in button passes both `goalId` and `timezone` so the check-in date matches the goal's timezone, not just the device timezone.
+
+4. **Connection to the app**
+   `app/(tabs)/_layout.tsx` exposes this as the `Personal` tab. It connects auth state, goal creation, goal listing, and check-in navigation.
+
+5. **What breaks if removed?**
+   Users would not have a place to create or manage their own personal goals.
+
+6. **Mental model**
+   This file is the user's private checklist. Add a daily promise at the top, then check in from the list below.
+
+### `app/check-ins/[goalId].tsx`
+
+1. **What is this file for?**
+   It is the screen for submitting today's check-in for one goal.
+
+2. **Most important lines**
+   `useLocalSearchParams` reads the `goalId` and goal `timezone` from the route. `submit('done')` and `submit('skipped')` send the selected status to `submitCheckIn`. `router.back()` returns to the previous screen after a successful check-in.
+
+3. **Functions/components**
+   `CheckInScreen` renders the note box and status buttons. `submit` validates sign-in, goal ID, and timezone, calls the API, and handles errors.
+
+4. **Connection to the app**
+   The personal tracker routes here with `/check-ins/:goalId` and includes the goal timezone as a route param. Later challenge goal screens can reuse the same check-in screen.
+
+5. **What breaks if removed?**
+   Goal rows could show a check-in button, but tapping it would route to a missing screen.
+
+6. **Mental model**
+   This file is the daily report form. Pick done or skipped, optionally add context, and send it.
+
+### `app/(tabs)/_layout.tsx`
+
+1. **What is this file for?**
+   It defines the bottom tab navigation.
+
+2. **Most important lines**
+   The new `Tabs.Screen` with `name="personal"` registers the Personal tab. Its icon uses `checklist`.
+
+3. **Functions/components**
+   `TabLayout` returns the tabs. The new personal entry adds the private tracker to the signed-in app.
+
+4. **Connection to the app**
+   This makes `app/(tabs)/personal.tsx` reachable from the main navigation.
+
+5. **What breaks if removed?**
+   The personal screen could exist, but users would not see it in the tab bar.
+
+6. **Mental model**
+   This file is the app's bottom menu. Task 6 adds a Personal button to that menu.
+
+### `app/_layout.tsx`
+
+1. **What is this file for?**
+   It is the root navigation shell.
+
+2. **Most important lines**
+   `Stack.Screen name="check-ins/[goalId]"` registers the check-in route and gives it a header title.
+
+3. **Functions/components**
+   `RootStack` still handles auth routing and now knows about the check-in detail route.
+
+4. **Connection to the app**
+   Personal goals route into `/check-ins/:goalId`, and the root stack controls that screen.
+
+5. **What breaks if removed?**
+   Check-in navigation could become inconsistent or lose its intended title/header behavior.
+
+6. **Mental model**
+   This file is the building map. Task 6 adds the check-in room to the map.
+
+### `components/ui/icon-symbol.tsx`
+
+1. **What is this file for?**
+   It maps iOS-style icon names to Android/web Material Icons.
+
+2. **Most important lines**
+   `checklist: 'checklist'` lets the Personal tab use the same icon name across platforms.
+
+3. **Functions/components**
+   `IconSymbol` translates a symbolic icon name into the right platform icon.
+
+4. **Connection to the app**
+   The Personal tab in `app/(tabs)/_layout.tsx` uses this mapping.
+
+5. **What breaks if removed?**
+   Android/web could fail to render the Personal tab icon correctly.
+
+6. **Mental model**
+   This file is the icon dictionary. Task 6 adds one more word to the dictionary.
+
+### `supabase/migrations/0001_initial_schema.sql`
+
+1. **What is this file for?**
+   It defines the database tables, security rules, and safe database functions.
+
+2. **Most important lines**
+   `create_goal(...)` bootstraps a missing profile, checks challenge membership when a challenge goal is requested, and inserts the goal with `auth.uid()` as owner. The new `checkins owner update` policy lets the app replace today's check-in through upsert, but only for a goal owned by the signed-in user.
+
+3. **Functions/components**
+   `create_goal` is the safe goal creation path. `checkins owner update` is the RLS rule that makes one-check-in-per-day upsert work without allowing users to update someone else's check-in.
+
+4. **Connection to the app**
+   `src/features/goals/api.ts` calls `create_goal`, and `src/features/check-ins/api.ts` relies on the check-in insert/update policies.
+
+5. **What breaks if removed?**
+   Brand-new users may fail to create goals because their `profiles` row might not exist. Re-checking in for the same local date may fail because upsert needs update permission on conflict.
+
+6. **Mental model**
+   This migration is the rulebook behind the form. It decides who owns a goal and whether today's attendance sheet can be safely replaced.
+
+### `tests/goals-api.test.ts`
+
+1. **What is this file for?**
+   It proves the goals API calls Supabase correctly.
+
+2. **Most important lines**
+   The create test checks that goal creation goes through `create_goal`. The list test checks the owner and active-status filters.
+
+3. **Functions/components**
+   One test covers creating a goal. One test covers listing active goals for the signed-in user.
+
+4. **Connection to the app**
+   These tests protect the data calls used by the personal tracker screen.
+
+5. **What breaks if removed?**
+   A future edit could switch back to unsafe direct inserts or load archived goals without tests catching it.
+
+6. **Mental model**
+   This file is a fake database receptionist. It checks which desk the goal API approaches.
+
+### `tests/check-ins.test.ts`
+
+1. **What is this file for?**
+   It proves the check-in API creates one local-day check-in with the right fields.
+
+2. **Most important lines**
+   The fake system time makes the local date predictable. The upsert expectation checks the unique key behavior. The skipped test checks that blank notes become `null`.
+
+3. **Functions/components**
+   The first test covers a done check-in with a note. The second test covers a skipped check-in with no note.
+
+4. **Connection to the app**
+   These tests protect `app/check-ins/[goalId].tsx`, which calls `submitCheckIn`.
+
+5. **What breaks if removed?**
+   Future changes could accidentally create duplicate check-ins for the same day or store blank note strings.
+
+6. **Mental model**
+   This file is a practice attendance sheet. It checks that the same goal and same day land on the same row.
+
+### `tests/personal-screens.test.tsx`
+
+1. **What is this file for?**
+   It proves the personal tracker and check-in screens call the right APIs.
+
+2. **Most important lines**
+   The create-goal test fills the daily goal and deadline inputs. The navigation test taps `Check in` and verifies typed dynamic routing with the goal timezone. The check-in test submits a done status with a note and verifies the goal timezone is used.
+
+3. **Functions/components**
+   One test covers adding a personal goal. One covers opening the check-in screen. One covers submitting a done check-in.
+
+4. **Connection to the app**
+   These tests protect the first end-to-end personal accountability loop.
+
+5. **What breaks if removed?**
+   The UI could stop wiring form values, navigation, or check-in status correctly without the test suite catching it.
+
+6. **Mental model**
+   This file is a robot user for the personal tracker. It creates a promise, opens it, and checks in.
+
+### `tests/rls.test.ts`
+
+1. **What is this file for?**
+   It checks the database security migration text.
+
+2. **Most important lines**
+   The new goal function test checks profile bootstrap and `auth.uid()` ownership. The check-in update policy test checks that upsert updates remain owner-scoped.
+
+3. **Functions/components**
+   `policySql()` extracts one RLS policy at a time. The new tests protect the database behavior that Task 6 relies on.
+
+4. **Connection to the app**
+   The personal tracker and check-in APIs depend on these database rules to work safely.
+
+5. **What breaks if removed?**
+   A future SQL edit could remove safe goal creation or check-in update protection without the app tests catching it.
+
+6. **Mental model**
+   This file is the database security inspector. It confirms the new personal tracker doors lock from the inside.

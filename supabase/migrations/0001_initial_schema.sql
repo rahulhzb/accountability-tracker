@@ -194,6 +194,50 @@ begin
 end;
 $$;
 
+create or replace function public.create_goal(
+  target_challenge_id uuid,
+  target_title text,
+  target_deadline_time time,
+  target_timezone text
+)
+returns public.goals
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  target_goal public.goals;
+begin
+  if auth.uid() is null then
+    raise exception 'Authentication required';
+  end if;
+
+  if target_challenge_id is not null and not public.is_challenge_member(target_challenge_id) then
+    raise exception 'Challenge membership required';
+  end if;
+
+  insert into public.profiles (id, display_name)
+  values (
+    auth.uid(),
+    coalesce(nullif(split_part(auth.jwt() ->> 'email', '@', 1), ''), 'Friend')
+  )
+  on conflict (id) do nothing;
+
+  insert into public.goals (owner_user_id, challenge_id, title, deadline_time, timezone)
+  values (
+    auth.uid(),
+    target_challenge_id,
+    trim(target_title),
+    target_deadline_time,
+    target_timezone
+  )
+  returning *
+  into target_goal;
+
+  return target_goal;
+end;
+$$;
+
 create policy "profiles own read" on public.profiles for select using (id = auth.uid());
 create policy "profiles own insert" on public.profiles for insert with check (id = auth.uid());
 create policy "profiles own update" on public.profiles for update using (id = auth.uid()) with check (id = auth.uid());
@@ -239,6 +283,23 @@ create policy "checkins owner or challenge member read" on public.check_ins for 
   )
 );
 create policy "checkins owner insert" on public.check_ins for insert with check (
+  user_id = auth.uid()
+  and exists (
+    select 1
+    from public.goals g
+    where g.id = check_ins.goal_id
+      and g.owner_user_id = auth.uid()
+  )
+);
+create policy "checkins owner update" on public.check_ins for update using (
+  user_id = auth.uid()
+  and exists (
+    select 1
+    from public.goals g
+    where g.id = check_ins.goal_id
+      and g.owner_user_id = auth.uid()
+  )
+) with check (
   user_id = auth.uid()
   and exists (
     select 1
