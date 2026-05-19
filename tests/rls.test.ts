@@ -8,6 +8,16 @@ function normalizedSql() {
   return migrationSql.replace(/\s+/g, ' ').toLowerCase();
 }
 
+function policySql(policyName: string) {
+  const sql = normalizedSql();
+  const marker = `create policy "${policyName}"`;
+  const start = sql.indexOf(marker);
+  expect(start).toBeGreaterThanOrEqual(0);
+
+  const nextPolicy = sql.indexOf(' create policy "', start + marker.length);
+  return nextPolicy === -1 ? sql.slice(start) : sql.slice(start, nextPolicy);
+}
+
 describe('row level security migration', () => {
   const sql = normalizedSql();
 
@@ -51,14 +61,35 @@ describe('row level security migration', () => {
     expect(sql).toContain('create or replace function public.join_challenge_by_invite_code');
   });
 
+  it('requires normalized invite codes with enough entropy for MVP invites', () => {
+    expect(sql).toContain("invite_code text not null unique check (invite_code ~ '^[a-z0-9]{8,16}$')");
+    expect(sql).toContain('where invite_code = upper(trim(target_invite_code))');
+  });
+
   it('prevents check-ins for goals owned by another user', () => {
-    expect(sql).toContain('create policy "checkins owner insert"');
-    expect(sql).toContain('g.owner_user_id = auth.uid()');
+    const policy = policySql('checkins owner insert');
+    expect(policy).toContain('user_id = auth.uid()');
+    expect(policy).toContain('g.owner_user_id = auth.uid()');
+  });
+
+  it('allows feed event inserts only for consistent member-owned check-ins', () => {
+    const policy = policySql('feed member insert consistent checkin event');
+    expect(policy).toContain('actor_user_id = auth.uid()');
+    expect(policy).toContain('public.is_challenge_member(challenge_id)');
+    expect(policy).toContain('ci.user_id = auth.uid()');
+    expect(policy).toContain('g.challenge_id = feed_events.challenge_id');
+    expect(policy).toContain("ci.status = 'done' and feed_events.event_type = 'check_in_done'");
   });
 
   it('keeps comments and device tokens scoped to the authenticated user boundary', () => {
-    expect(sql).toContain('create policy "comments member insert"');
-    expect(sql).toContain('user_id = auth.uid()');
-    expect(sql).toContain('create policy "tokens own upsert"');
+    const commentsPolicy = policySql('comments member insert');
+    const tokensPolicy = policySql('tokens own upsert');
+    expect(commentsPolicy).toContain('user_id = auth.uid()');
+    expect(commentsPolicy).toContain('public.is_challenge_member(fe.challenge_id)');
+    expect(tokensPolicy).toContain('user_id = auth.uid()');
+  });
+
+  it('indexes challenge memberships by user for my-challenges queries', () => {
+    expect(sql).toContain('create index challenge_members_user_idx on public.challenge_members(user_id)');
   });
 });

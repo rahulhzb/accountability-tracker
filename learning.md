@@ -729,10 +729,10 @@ This task created the database blueprint for the MVP and documented how private 
    It tells Supabase/Postgres how to create the app's database tables, relationships, indexes, and row-level security rules.
 
 2. **Most important lines**
-   The `create table` blocks define the main app objects: `profiles`, `challenges`, `challenge_members`, `goals`, `check_ins`, `feed_events`, `comments`, and `device_tokens`. The `alter table ... enable row level security` lines turn on database-level privacy. The `create policy` lines define who can read or write each row.
+   The `create table` blocks define the main app objects: `profiles`, `challenges`, `challenge_members`, `goals`, `check_ins`, `feed_events`, `comments`, and `device_tokens`. The `invite_code` check requires an uppercase 8-16 character code so invite links have a predictable safe shape. The `alter table ... enable row level security` lines turn on database-level privacy. The `create policy` lines define who can read or write each row.
 
 3. **Functions/components**
-   `public.is_challenge_member(target_challenge_id uuid)` answers "is the signed-in user a member of this challenge?" and is reused by many RLS policies. `public.join_challenge_by_invite_code(target_invite_code text)` lets a signed-in user join a private challenge by invite code without allowing unsafe direct membership inserts by guessed challenge ID.
+   `public.is_challenge_member(target_challenge_id uuid)` answers "is the signed-in user a member of this challenge?" and is reused by many RLS policies. `public.join_challenge_by_invite_code(target_invite_code text)` lets a signed-in user join a private challenge by invite code without allowing unsafe direct membership inserts by guessed challenge ID. The `feed member insert consistent checkin event` policy lets app code create feed events only when the event matches the signed-in user's own check-in and challenge.
 
 4. **Connection to the app**
    Future auth, challenge, goal, check-in, feed, comment, and notification code will read and write these tables through the Supabase client in `src/lib/supabase.ts`.
@@ -769,10 +769,10 @@ This task created the database blueprint for the MVP and documented how private 
    It checks the migration text for the most important RLS rules without needing Docker or a live Supabase database.
 
 2. **Most important lines**
-   `readFileSync(migrationPath, 'utf8')` loads the SQL migration. The tests check that every app table enables RLS, challenge reads require membership, personal goals stay owner-only, feed reads require membership, direct membership self-join is not allowed, check-ins require goal ownership, and comments/device tokens stay inside the authenticated user's boundary.
+   `readFileSync(migrationPath, 'utf8')` loads the SQL migration. `policySql(policyName)` extracts one policy at a time so the tests do not accidentally pass because of an unrelated line elsewhere. The tests check that every app table enables RLS, challenge reads require membership, personal goals stay owner-only, feed reads require membership, direct membership self-join is not allowed, invite codes are normalized, check-ins require goal ownership, feed inserts match the user's own check-in, and comments/device tokens stay inside the authenticated user's boundary.
 
 3. **Functions/components**
-   `normalizedSql()` makes SQL spacing easier to test by collapsing whitespace and lowercasing the file. Each `it(...)` block is a Jest test for one security expectation.
+   `normalizedSql()` makes SQL spacing easier to test by collapsing whitespace and lowercasing the file. `policySql()` narrows checks to a single policy body. Each `it(...)` block is a Jest test for one security expectation.
 
 4. **Connection to the app**
    These tests protect the database contract that future app screens and API helpers depend on.

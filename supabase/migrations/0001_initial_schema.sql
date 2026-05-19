@@ -16,7 +16,7 @@ create table public.challenges (
   name text not null check (char_length(name) between 1 and 120),
   description text not null default '' check (char_length(description) <= 500),
   created_by uuid not null references public.profiles(id) on delete cascade,
-  invite_code text not null unique,
+  invite_code text not null unique check (invite_code ~ '^[A-Z0-9]{8,16}$'),
   start_date date not null default current_date,
   end_date date null,
   privacy text not null default 'private' check (privacy = 'private'),
@@ -85,6 +85,7 @@ create table public.device_tokens (
 );
 
 create index goals_owner_status_idx on public.goals(owner_user_id, status);
+create index challenge_members_user_idx on public.challenge_members(user_id);
 create index goals_challenge_idx on public.goals(challenge_id) where challenge_id is not null;
 create index check_ins_user_date_idx on public.check_ins(user_id, local_date desc);
 create index feed_events_challenge_created_idx on public.feed_events(challenge_id, created_at desc);
@@ -200,6 +201,26 @@ create policy "checkins owner insert" on public.check_ins for insert with check 
 );
 
 create policy "feed member read" on public.feed_events for select using (public.is_challenge_member(challenge_id));
+create policy "feed member insert consistent checkin event" on public.feed_events for insert with check (
+  actor_user_id = auth.uid()
+  and public.is_challenge_member(challenge_id)
+  and (
+    check_in_id is null
+    or exists (
+      select 1
+      from public.check_ins ci
+      join public.goals g on g.id = ci.goal_id
+      where ci.id = feed_events.check_in_id
+        and ci.user_id = auth.uid()
+        and g.challenge_id = feed_events.challenge_id
+        and (
+          (ci.status = 'done' and feed_events.event_type = 'check_in_done')
+          or (ci.status = 'skipped' and feed_events.event_type = 'check_in_skipped')
+          or (ci.status = 'missed' and feed_events.event_type = 'check_in_missed')
+        )
+    )
+  )
+);
 create policy "comments member read" on public.comments for select using (
   exists (
     select 1
