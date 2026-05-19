@@ -76,6 +76,7 @@ describe('row level security migration', () => {
     const policy = policySql('feed member insert consistent checkin event');
     expect(policy).toContain('actor_user_id = auth.uid()');
     expect(policy).toContain('public.is_challenge_member(challenge_id)');
+    expect(policy).toContain('check_in_id is not null');
     expect(policy).toContain('ci.user_id = auth.uid()');
     expect(policy).toContain('g.challenge_id = feed_events.challenge_id');
     expect(policy).toContain("ci.status = 'done' and feed_events.event_type = 'check_in_done'");

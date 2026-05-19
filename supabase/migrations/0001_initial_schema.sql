@@ -204,21 +204,19 @@ create policy "feed member read" on public.feed_events for select using (public.
 create policy "feed member insert consistent checkin event" on public.feed_events for insert with check (
   actor_user_id = auth.uid()
   and public.is_challenge_member(challenge_id)
-  and (
-    check_in_id is null
-    or exists (
-      select 1
-      from public.check_ins ci
-      join public.goals g on g.id = ci.goal_id
-      where ci.id = feed_events.check_in_id
-        and ci.user_id = auth.uid()
-        and g.challenge_id = feed_events.challenge_id
-        and (
-          (ci.status = 'done' and feed_events.event_type = 'check_in_done')
-          or (ci.status = 'skipped' and feed_events.event_type = 'check_in_skipped')
-          or (ci.status = 'missed' and feed_events.event_type = 'check_in_missed')
-        )
-    )
+  and check_in_id is not null
+  and exists (
+    select 1
+    from public.check_ins ci
+    join public.goals g on g.id = ci.goal_id
+    where ci.id = feed_events.check_in_id
+      and ci.user_id = auth.uid()
+      and g.challenge_id = feed_events.challenge_id
+      and (
+        (ci.status = 'done' and feed_events.event_type = 'check_in_done')
+        or (ci.status = 'skipped' and feed_events.event_type = 'check_in_skipped')
+        or (ci.status = 'missed' and feed_events.event_type = 'check_in_missed')
+      )
   )
 );
 create policy "comments member read" on public.comments for select using (
