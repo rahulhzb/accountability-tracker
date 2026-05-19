@@ -782,3 +782,47 @@ This task created the database blueprint for the MVP and documented how private 
 
 6. **Mental model**
    This is a smoke alarm for the database locks. It does not open a real Supabase instance, but it warns us if the lock instructions disappear from the migration.
+
+## Task 3: Date And Deadline Logic
+
+This task added small timezone helpers that future check-in and missed-deadline code can share.
+
+### `src/lib/dates.ts`
+
+1. **What is this file for?**
+   It turns an exact moment in time into the user's local date and checks whether today's local deadline has already passed.
+
+2. **Most important lines**
+   The `Intl.DateTimeFormat` setup asks JavaScript to describe a `Date` in a specific timezone instead of the device's default timezone. `getLocalDateKey` returns a `YYYY-MM-DD` string for database fields like `local_date`. `hasDeadlinePassed` compares seconds since local midnight so deadline strings are compared as real times, not as loose text.
+
+3. **Functions/components**
+   `getLocalDateKey(date, timeZone)` answers "what calendar day is this for the user?" `hasDeadlinePassed(now, deadlineTime, timeZone)` answers "has the user's local time reached this deadline yet?" `parseDeadlineTime(deadlineTime)` accepts `HH:mm` or `HH:mm:ss` in 24-hour time and rejects invalid values like `9pm`.
+
+4. **Connection to the app**
+   Future check-in screens can use `getLocalDateKey` when saving today's check-in. Future reminder or missed-check-in jobs can use `hasDeadlinePassed` before marking a goal as missed.
+
+5. **What breaks if removed?**
+   The app may save check-ins under the wrong day for users outside UTC, and deadline automation may mark goals missed too early or too late.
+
+6. **Mental model**
+   This file is the app's timezone translator. It looks at one global clock moment and tells the app what that moment means on the user's local calendar.
+
+### `tests/dates.test.ts`
+
+1. **What is this file for?**
+   It proves the date helpers work before other features depend on them.
+
+2. **Most important lines**
+   The first import points at `../src/lib/dates`, which intentionally failed before `src/lib/dates.ts` existed. The timezone-difference test checks that the same UTC moment can be May 19 in Kolkata but May 18 in Los Angeles. The exact-deadline and `HH:mm` tests protect edge cases around deadline parsing.
+
+3. **Functions/components**
+   Each `it(...)` block is a Jest test for one behavior: local date keys, timezone differences, passed deadlines, future deadlines, exact deadline seconds, short deadline strings, and invalid deadline strings.
+
+4. **Connection to the app**
+   These tests guard the shared date contract used by future check-in, feed, and missed-check-in code.
+
+5. **What breaks if removed?**
+   Future edits could accidentally fall back to UTC or compare deadline text incorrectly without the test suite catching it.
+
+6. **Mental model**
+   This file is the practice course for the timezone translator. It checks normal paths and tricky boundary paths before the helpers are used in real app flows.
