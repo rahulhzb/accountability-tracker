@@ -18,11 +18,35 @@ const LOCAL_DATE_TIME_FORMAT_OPTIONS: Intl.DateTimeFormatOptions = {
   hourCycle: 'h23',
 };
 
+function assertValidDate(date: Date) {
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) {
+    throw new Error('Invalid date. Use a valid Date object.');
+  }
+}
+
+function assertValidLocalDate(localDate: string) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(localDate)) {
+    throw new Error('Invalid localDate. Use YYYY-MM-DD.');
+  }
+}
+
 function partsFor(date: Date, timeZone: string): LocalDateTimeParts {
-  const formatter = new Intl.DateTimeFormat('en-CA', {
-    ...LOCAL_DATE_TIME_FORMAT_OPTIONS,
-    timeZone,
-  });
+  assertValidDate(date);
+
+  let formatter: Intl.DateTimeFormat;
+
+  try {
+    formatter = new Intl.DateTimeFormat('en-CA', {
+      ...LOCAL_DATE_TIME_FORMAT_OPTIONS,
+      timeZone,
+    });
+  } catch (error) {
+    if (error instanceof RangeError) {
+      throw new Error('Invalid timeZone. Use an IANA timezone like Asia/Kolkata.');
+    }
+
+    throw error;
+  }
 
   const parts = Object.fromEntries(
     formatter
@@ -68,7 +92,33 @@ export function hasDeadlinePassed(
   deadlineTime: string,
   timeZone: string,
 ): boolean {
+  return hasDeadlinePassedForLocalDate(
+    now,
+    getLocalDateKey(now, timeZone),
+    deadlineTime,
+    timeZone,
+  );
+}
+
+export function hasDeadlinePassedForLocalDate(
+  now: Date,
+  localDate: string,
+  deadlineTime: string,
+  timeZone: string,
+): boolean {
+  assertValidLocalDate(localDate);
+
   const parts = partsFor(now, timeZone);
+  const currentLocalDate = `${parts.year}-${parts.month}-${parts.day}`;
+
+  if (currentLocalDate > localDate) {
+    return true;
+  }
+
+  if (currentLocalDate < localDate) {
+    return false;
+  }
+
   const currentSeconds = secondsSinceMidnight(
     Number(parts.hour),
     Number(parts.minute),

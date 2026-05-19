@@ -790,16 +790,16 @@ This task added small timezone helpers that future check-in and missed-deadline 
 ### `src/lib/dates.ts`
 
 1. **What is this file for?**
-   It turns an exact moment in time into the user's local date and checks whether today's local deadline has already passed.
+   It turns an exact moment in time into the user's local date and checks whether a configurable local deadline has already passed.
 
 2. **Most important lines**
-   The `Intl.DateTimeFormat` setup asks JavaScript to describe a `Date` in a specific timezone instead of the device's default timezone. `getLocalDateKey` returns a `YYYY-MM-DD` string for database fields like `local_date`. `hasDeadlinePassed` compares seconds since local midnight so deadline strings are compared as real times, not as loose text.
+   The `Intl.DateTimeFormat` setup asks JavaScript to describe a `Date` in a specific timezone instead of the device's default timezone. `assertValidDate` and the timezone error handling turn low-level JavaScript errors into app-level errors. `getLocalDateKey` returns a `YYYY-MM-DD` string for database fields like `local_date`. `hasDeadlinePassedForLocalDate` first compares the local calendar date, then compares seconds since local midnight only when the target date is today.
 
 3. **Functions/components**
-   `getLocalDateKey(date, timeZone)` answers "what calendar day is this for the user?" `hasDeadlinePassed(now, deadlineTime, timeZone)` answers "has the user's local time reached this deadline yet?" `parseDeadlineTime(deadlineTime)` accepts `HH:mm` or `HH:mm:ss` in 24-hour time and rejects invalid values like `9pm`.
+   `getLocalDateKey(date, timeZone)` answers "what calendar day is this for the user?" `hasDeadlinePassed(now, deadlineTime, timeZone)` answers "has today's local deadline passed?" `hasDeadlinePassedForLocalDate(now, localDate, deadlineTime, timeZone)` answers "has the deadline for this specific local date passed?" `parseDeadlineTime(deadlineTime)` accepts `HH:mm` or `HH:mm:ss` in 24-hour time and rejects invalid values like `9pm`. `assertValidDate` and `assertValidLocalDate` stop bad inputs before they can confuse deadline logic.
 
 4. **Connection to the app**
-   Future check-in screens can use `getLocalDateKey` when saving today's check-in. Future reminder or missed-check-in jobs can use `hasDeadlinePassed` before marking a goal as missed.
+   Future check-in screens can use `getLocalDateKey` when saving today's check-in. Future reminder flows can use `hasDeadlinePassed` for today's reminder. Future missed-check-in jobs should use `hasDeadlinePassedForLocalDate` because missed jobs often evaluate goals from prior local dates, not only today.
 
 5. **What breaks if removed?**
    The app may save check-ins under the wrong day for users outside UTC, and deadline automation may mark goals missed too early or too late.
@@ -813,10 +813,10 @@ This task added small timezone helpers that future check-in and missed-deadline 
    It proves the date helpers work before other features depend on them.
 
 2. **Most important lines**
-   The first import points at `../src/lib/dates`, which intentionally failed before `src/lib/dates.ts` existed. The timezone-difference test checks that the same UTC moment can be May 19 in Kolkata but May 18 in Los Angeles. The exact-deadline and `HH:mm` tests protect edge cases around deadline parsing.
+   The first import points at `../src/lib/dates`, which intentionally failed before `src/lib/dates.ts` existed. The timezone-difference test checks that the same UTC moment can be May 19 in Kolkata but May 18 in Los Angeles. The prior-date and future-date tests protect missed-check-in automation from comparing only the clock time. The invalid timezone, invalid date, and invalid local date tests protect the helper's error contract.
 
 3. **Functions/components**
-   Each `it(...)` block is a Jest test for one behavior: local date keys, timezone differences, passed deadlines, future deadlines, exact deadline seconds, short deadline strings, and invalid deadline strings.
+   Each `it(...)` block is a Jest test for one behavior: local date keys, timezone differences, passed deadlines, future deadlines, exact deadline seconds, short deadline strings, specific local-date deadlines, and invalid inputs.
 
 4. **Connection to the app**
    These tests guard the shared date contract used by future check-in, feed, and missed-check-in code.
