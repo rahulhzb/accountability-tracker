@@ -1398,3 +1398,97 @@ This task added the personal tracker loop: users can create daily personal goals
 
 6. **Mental model**
    This file is the database security inspector. It confirms the new personal tracker doors lock from the inside.
+
+## Task 7: Feed And Comments
+
+This task added the challenge feed loop: challenge check-ins create feed events, challenge detail shows those events, and members can comment.
+
+### `src/features/feed/api.ts`
+
+1. **What is this file for?**
+   Shared Supabase calls for challenge feed events and comments.
+2. **Most important lines**
+   `listFeedEvents` selects feed events with related `check_ins` and `comments`. `createComment` trims the comment body before inserting.
+3. **Functions/components**
+   `listFeedEvents(challengeId)` loads a challenge feed. `createComment(...)` posts a response to one feed event.
+4. **Connection to the app**
+   `app/challenges/[challengeId].tsx` uses both functions.
+5. **What breaks if removed?**
+   Challenge detail cannot show feed activity or post comments.
+6. **Mental model**
+   This is the feed service desk: load the wall, post a reply.
+
+### `src/features/check-ins/api.ts`
+
+1. **What is this file for?**
+   It submits daily check-ins.
+2. **Most important lines**
+   After saving a check-in, it loads the goal's `challenge_id`. If present, it inserts a matching `feed_events` row with `check_in_done` or `check_in_skipped`.
+3. **Functions/components**
+   `submitCheckIn` now records the check-in and, for group goals, creates feed activity.
+4. **Connection to the app**
+   Check-in screens trigger feed updates automatically for challenge goals.
+5. **What breaks if removed?**
+   Group members would not see completed/skipped check-ins in the challenge feed.
+6. **Mental model**
+   This is the attendance sheet that also posts to the group wall when the goal belongs to a group.
+
+### `app/challenges/[challengeId].tsx`
+
+1. **What is this file for?**
+   It renders one challenge's feed.
+2. **Most important lines**
+   `useFocusEffect` reloads the feed when opened. `labelByEventType` turns database event names into readable labels. `submitComment` posts a comment and refreshes the feed.
+3. **Functions/components**
+   `ChallengeDetailScreen` lists feed cards, notes, comments, and a response input per event.
+4. **Connection to the app**
+   Challenge list/create/join flows route here after selecting a group.
+5. **What breaks if removed?**
+   Users can enter a challenge, but cannot see activity or respond.
+6. **Mental model**
+   This is the group wall.
+
+### `tests/feed.test.ts`
+
+1. **What is this file for?**
+   It verifies the feed API calls Supabase correctly.
+2. **Most important lines**
+   The list test checks challenge filtering and newest-first order. The comment test checks trimmed comment inserts.
+3. **Functions/components**
+   One test covers feed loading; one covers comment creation.
+4. **Connection to the app**
+   Protects the API used by challenge detail.
+5. **What breaks if removed?**
+   Feed queries or comment writes could drift silently.
+6. **Mental model**
+   Fake Supabase checks that feed calls use the right table and fields.
+
+### `tests/challenge-feed-screen.test.tsx`
+
+1. **What is this file for?**
+   It verifies the challenge detail UI shows feed activity and posts comments.
+2. **Most important lines**
+   It renders a fake done check-in, checks note/comment text, types a response, and expects `createComment`.
+3. **Functions/components**
+   The test covers feed rendering plus comment submission.
+4. **Connection to the app**
+   Protects the visible challenge feed loop.
+5. **What breaks if removed?**
+   The screen could stop showing notes/comments or stop posting responses.
+6. **Mental model**
+   Robot group member reads the wall and writes a reply.
+
+### `tests/check-ins.test.ts`
+
+1. **What is this file for?**
+   It verifies check-in persistence.
+2. **Most important lines**
+   The new feed-event test checks that challenge goal check-ins create `feed_events`.
+3. **Functions/components**
+   Existing tests cover daily upsert and notes; the new test covers group feed side effects.
+4. **Connection to the app**
+   Protects the bridge between check-ins and challenge feeds.
+5. **What breaks if removed?**
+   Challenge feed events could stop being created after check-ins.
+6. **Mental model**
+   Confirms attendance also posts to the wall when relevant.

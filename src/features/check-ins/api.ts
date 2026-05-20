@@ -3,6 +3,11 @@ import { supabase } from '../../lib/supabase';
 
 export type CheckInStatus = 'done' | 'skipped';
 
+const eventTypeByStatus = {
+  done: 'check_in_done',
+  skipped: 'check_in_skipped',
+} as const;
+
 export async function submitCheckIn(input: {
   goalId: string;
   userId: string;
@@ -32,6 +37,29 @@ export async function submitCheckIn(input: {
 
   if (error) {
     throw error;
+  }
+
+  const { data: goal, error: goalError } = await supabase
+    .from('goals')
+    .select('challenge_id')
+    .eq('id', input.goalId)
+    .single();
+
+  if (goalError) {
+    throw goalError;
+  }
+
+  if (goal?.challenge_id) {
+    const { error: feedError } = await supabase.from('feed_events').insert({
+      actor_user_id: input.userId,
+      challenge_id: goal.challenge_id,
+      check_in_id: data.id,
+      event_type: eventTypeByStatus[input.status],
+    });
+
+    if (feedError) {
+      throw feedError;
+    }
   }
 
   return data;

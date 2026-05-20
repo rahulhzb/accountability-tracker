@@ -30,7 +30,14 @@ describe('check-ins api', () => {
     const single = jest.fn().mockResolvedValue({ data: checkIn, error: null });
     const select = jest.fn(() => ({ single }));
     const upsert = jest.fn(() => ({ select }));
-    mockFrom.mockReturnValue({ upsert });
+    const goalSingle = jest.fn().mockResolvedValue({ data: { challenge_id: null }, error: null });
+    const goalEq = jest.fn(() => ({ single: goalSingle }));
+    const goalSelect = jest.fn(() => ({ eq: goalEq }));
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'check_ins') return { upsert };
+      if (table === 'goals') return { select: goalSelect };
+      throw new Error(`Unexpected table ${table}`);
+    });
 
     await expect(
       submitCheckIn({
@@ -61,7 +68,14 @@ describe('check-ins api', () => {
     const single = jest.fn().mockResolvedValue({ data: { id: 'check-in-1' }, error: null });
     const select = jest.fn(() => ({ single }));
     const upsert = jest.fn(() => ({ select }));
-    mockFrom.mockReturnValue({ upsert });
+    const goalSingle = jest.fn().mockResolvedValue({ data: { challenge_id: null }, error: null });
+    const goalEq = jest.fn(() => ({ single: goalSingle }));
+    const goalSelect = jest.fn(() => ({ eq: goalEq }));
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'check_ins') return { upsert };
+      if (table === 'goals') return { select: goalSelect };
+      throw new Error(`Unexpected table ${table}`);
+    });
 
     await submitCheckIn({
       goalId: 'goal-1',
@@ -73,5 +87,40 @@ describe('check-ins api', () => {
 
     expect(upsert.mock.calls[0][0].status).toBe('skipped');
     expect(upsert.mock.calls[0][0].note).toBeNull();
+  });
+
+  it('creates a feed event for challenge goal check-ins', async () => {
+    const checkIn = { id: 'check-in-1', goal_id: 'goal-1', status: 'done' };
+    const checkInSingle = jest.fn().mockResolvedValue({ data: checkIn, error: null });
+    const checkInSelect = jest.fn(() => ({ single: checkInSingle }));
+    const upsert = jest.fn(() => ({ select: checkInSelect }));
+    const goalSingle = jest
+      .fn()
+      .mockResolvedValue({ data: { challenge_id: 'challenge-1' }, error: null });
+    const goalEq = jest.fn(() => ({ single: goalSingle }));
+    const goalSelect = jest.fn(() => ({ eq: goalEq }));
+    const feedInsert = jest.fn().mockResolvedValue({ error: null });
+
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'check_ins') return { upsert };
+      if (table === 'goals') return { select: goalSelect };
+      if (table === 'feed_events') return { insert: feedInsert };
+      throw new Error(`Unexpected table ${table}`);
+    });
+
+    await submitCheckIn({
+      goalId: 'goal-1',
+      note: 'Finished',
+      status: 'done',
+      timezone: 'Asia/Kolkata',
+      userId: 'user-1',
+    });
+
+    expect(feedInsert).toHaveBeenCalledWith({
+      actor_user_id: 'user-1',
+      challenge_id: 'challenge-1',
+      check_in_id: 'check-in-1',
+      event_type: 'check_in_done',
+    });
   });
 });
