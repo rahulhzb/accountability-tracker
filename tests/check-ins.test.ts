@@ -99,12 +99,12 @@ describe('check-ins api', () => {
       .mockResolvedValue({ data: { challenge_id: 'challenge-1' }, error: null });
     const goalEq = jest.fn(() => ({ single: goalSingle }));
     const goalSelect = jest.fn(() => ({ eq: goalEq }));
-    const feedInsert = jest.fn().mockResolvedValue({ error: null });
+    const feedUpsert = jest.fn().mockResolvedValue({ error: null });
 
     mockFrom.mockImplementation((table: string) => {
       if (table === 'check_ins') return { upsert };
       if (table === 'goals') return { select: goalSelect };
-      if (table === 'feed_events') return { insert: feedInsert };
+      if (table === 'feed_events') return { upsert: feedUpsert };
       throw new Error(`Unexpected table ${table}`);
     });
 
@@ -116,11 +116,14 @@ describe('check-ins api', () => {
       userId: 'user-1',
     });
 
-    expect(feedInsert).toHaveBeenCalledWith({
-      actor_user_id: 'user-1',
-      challenge_id: 'challenge-1',
-      check_in_id: 'check-in-1',
-      event_type: 'check_in_done',
-    });
+    expect(feedUpsert).toHaveBeenCalledWith(
+      {
+        actor_user_id: 'user-1',
+        challenge_id: 'challenge-1',
+        check_in_id: 'check-in-1',
+        event_type: 'check_in_done',
+      },
+      { ignoreDuplicates: true, onConflict: 'check_in_id,event_type' },
+    );
   });
 });

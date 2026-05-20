@@ -1492,3 +1492,97 @@ This task added the challenge feed loop: challenge check-ins create feed events,
    Challenge feed events could stop being created after check-ins.
 6. **Mental model**
    Confirms attendance also posts to the wall when relevant.
+
+## Task 8: Missed Check-In Automation
+
+This task added a scheduled Supabase Edge Function that marks overdue active goals as missed and posts missed events to the challenge feed.
+
+### `supabase/functions/generate-missed-checkins/deadline.ts`
+
+1. **What is this file for?**
+   Testable deadline logic for the missed-check-in job.
+2. **Most important lines**
+   `buildMissedCheckInCandidate` returns the local date that should be marked missed, including yesterday when a late job runs after midnight. `isDuplicateCheckInError` recognizes retry-safe unique-constraint conflicts.
+3. **Functions/components**
+   `buildMissedCheckInCandidate(goal, now)` decides whether a goal is overdue. `isDuplicateCheckInError(error)` tells the job when a duplicate insert can be safely ignored.
+4. **Connection to the app**
+   The Edge Function imports this logic before writing missed check-ins.
+5. **What breaks if removed?**
+   The job loses its timezone-aware deadline decision and duplicate-conflict handling.
+6. **Mental model**
+   This file is the clock checker.
+
+### `supabase/functions/generate-missed-checkins/index.ts`
+
+1. **What is this file for?**
+   The Supabase Edge Function that scans active goals and creates missed check-ins.
+2. **Most important lines**
+   It requires `DEADLINE_JOB_SECRET`, uses `SUPABASE_SERVICE_ROLE_KEY`, selects active goals, inserts `status: 'missed'`, sets `auto_marked_missed: true`, and repairs missing `check_in_missed` feed events with duplicate-safe upsert.
+3. **Functions/components**
+   The `Deno.serve` handler runs the job, counts inserted/skipped/duplicate rows, and returns a JSON summary.
+4. **Connection to the app**
+   Missed commitments become regular `check_ins` rows, so feeds and future screens can display them.
+5. **What breaks if removed?**
+   Overdue goals would not be automatically marked missed.
+6. **Mental model**
+   This is the nightly attendance monitor.
+
+### `supabase/migrations/0001_initial_schema.sql`
+
+1. **What is this file for?**
+   It defines database tables, indexes, functions, and security rules.
+2. **Most important lines**
+   `feed_events_checkin_type_unique_idx` prevents duplicate feed events for the same check-in and event type.
+3. **Functions/components**
+   No new function here. The new unique index is a database guardrail.
+4. **Connection to the app**
+   The missed-check-in job uses this index when it upserts missed feed events.
+5. **What breaks if removed?**
+   Two job runs could create duplicate missed feed cards for the same check-in.
+6. **Mental model**
+   This is a lock on the group wall that says one attendance event gets one matching wall post.
+
+### `src/features/check-ins/api.ts`
+
+1. **What is this file for?**
+   It submits daily check-ins from the app.
+2. **Most important lines**
+   Group check-ins now use duplicate-safe feed-event upsert with `onConflict: 'check_in_id,event_type'`.
+3. **Functions/components**
+   `submitCheckIn` still saves the check-in first, then posts one matching feed event for challenge goals.
+4. **Connection to the app**
+   The check-in screen calls this function, and the challenge feed reads the resulting feed event.
+5. **What breaks if removed?**
+   Repeated check-ins could fail or create duplicate feed cards.
+6. **Mental model**
+   This is the attendance sheet posting exactly one matching update to the group wall.
+
+### `docs/runbooks/deadline-jobs.md`
+
+1. **What is this file for?**
+   Operational notes for running and checking the missed-check-in job.
+2. **Most important lines**
+   The retry-safety note explains that `(goal_id, local_date)` prevents duplicate missed rows. The auth section documents the required bearer secret.
+3. **Functions/components**
+   None. This is documentation.
+4. **Connection to the app**
+   It tells us how the scheduled job should behave in production and local testing.
+5. **What breaks if removed?**
+   Future operators lose the checklist for missed-check-in jobs.
+6. **Mental model**
+   This is the job's operating manual.
+
+### `tests/deadline-jobs.test.ts`
+
+1. **What is this file for?**
+   It verifies deadline math and important Edge Function behavior.
+2. **Most important lines**
+   The timezone tests check regular deadlines, late-after-midnight jobs, and first-deadline skips. The source checks confirm service-role usage, job-secret auth, missed status, auto-missed flag, feed event upsert, retry repair, and duplicate handling.
+3. **Functions/components**
+   Tests cover `buildMissedCheckInCandidate`, `isDuplicateCheckInError`, and required job source wiring.
+4. **Connection to the app**
+   Protects the automation that converts overdue goals into missed check-ins.
+5. **What breaks if removed?**
+   Deadline math or missed-job wiring could regress without fast feedback.
+6. **Mental model**
+   This is the job rehearsal.

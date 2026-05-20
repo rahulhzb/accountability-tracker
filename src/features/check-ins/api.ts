@@ -50,12 +50,17 @@ export async function submitCheckIn(input: {
   }
 
   if (goal?.challenge_id) {
-    const { error: feedError } = await supabase.from('feed_events').insert({
-      actor_user_id: input.userId,
-      challenge_id: goal.challenge_id,
-      check_in_id: data.id,
-      event_type: eventTypeByStatus[input.status],
-    });
+    const { error: feedError } = await supabase
+      .from('feed_events')
+      .upsert(
+        {
+          actor_user_id: input.userId,
+          challenge_id: goal.challenge_id,
+          check_in_id: data.id,
+          event_type: eventTypeByStatus[input.status],
+        },
+        { ignoreDuplicates: true, onConflict: 'check_in_id,event_type' },
+      );
 
     if (feedError) {
       throw feedError;

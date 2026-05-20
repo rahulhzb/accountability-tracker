@@ -110,6 +110,12 @@ describe('row level security migration', () => {
     expect(policy).toContain("ci.status = 'done' and feed_events.event_type = 'check_in_done'");
   });
 
+  it('prevents duplicate feed events for the same check-in event type', () => {
+    expect(sql).toContain(
+      'create unique index feed_events_checkin_type_unique_idx on public.feed_events(check_in_id, event_type)',
+    );
+  });
+
   it('keeps comments and device tokens scoped to the authenticated user boundary', () => {
     const commentsPolicy = policySql('comments member insert');
     const tokensPolicy = policySql('tokens own upsert');

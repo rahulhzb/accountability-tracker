@@ -89,6 +89,7 @@ create index challenge_members_user_idx on public.challenge_members(user_id);
 create index goals_challenge_idx on public.goals(challenge_id) where challenge_id is not null;
 create index check_ins_user_date_idx on public.check_ins(user_id, local_date desc);
 create index feed_events_challenge_created_idx on public.feed_events(challenge_id, created_at desc);
+create unique index feed_events_checkin_type_unique_idx on public.feed_events(check_in_id, event_type);
 create index comments_feed_created_idx on public.comments(feed_event_id, created_at asc);
 create index device_tokens_user_idx on public.device_tokens(user_id);
 
