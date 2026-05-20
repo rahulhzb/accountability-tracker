@@ -18,7 +18,16 @@ The MVP is challenge-first. Users create or join private invite-only friend chal
 
 - Design spec: [docs/specs/2026-05-17-accountability-tracker-design.md](docs/specs/2026-05-17-accountability-tracker-design.md)
 - Implementation plan: [docs/superpowers/plans/2026-05-18-accountability-tracker-complete-mvp.md](docs/superpowers/plans/2026-05-18-accountability-tracker-complete-mvp.md)
+- Release checklist: [docs/runbooks/release-checklist.md](docs/runbooks/release-checklist.md)
+
+## Development
+
+1. Copy `.env.example` to `.env`.
+2. Fill in Supabase and Expo values.
+3. Run `npm install`.
+4. Run `npm start`.
+5. Run `npm test`.
 
 ## Current Status
 
-The product design is approved and the Complete MVP implementation plan is written. Next step is to scaffold the Expo and Supabase project foundation.
+The MVP foundation is implemented through auth, private challenges, personal goals, check-ins, group feed/comments, missed-check-in automation, push notification foundation, and Today navigation.
