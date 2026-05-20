@@ -1586,3 +1586,97 @@ This task added a scheduled Supabase Edge Function that marks overdue active goa
    Deadline math or missed-job wiring could regress without fast feedback.
 6. **Mental model**
    This is the job rehearsal.
+
+## Task 9: Push Notification Foundation
+
+This task added the first push-notification layer: registering Expo push tokens in the app, protected Edge Functions for sending/scanning notifications, and an operations runbook.
+
+### `src/lib/notifications.ts`
+
+1. **What is this file for?**
+   It registers the current device for Expo push notifications.
+2. **Most important lines**
+   `Device.isDevice` skips simulators, permission checks avoid unwanted token requests, `getExpoPushTokenAsync({ projectId })` gets the Expo token, and `device_tokens.upsert(...)` stores it.
+3. **Functions/components**
+   `registerPushToken(userId)` asks for permission, gets the token, stores it for the signed-in user, and returns the token string.
+4. **Connection to the app**
+   Auth or onboarding can call this after a user signs in.
+5. **What breaks if removed?**
+   The backend has no device token to send notifications to.
+6. **Mental model**
+   This is the app writing the user's delivery address into the database.
+
+### `supabase/functions/send-push/index.ts`
+
+1. **What is this file for?**
+   It forwards push messages to Expo's push API.
+2. **Most important lines**
+   `PUSH_SEND_SECRET` protects the endpoint, the empty-message check rejects bad calls, and `fetch('https://exp.host/--/api/v2/push/send', ...)` sends to Expo.
+3. **Functions/components**
+   The `Deno.serve` handler validates auth, reads `messages`, sends them, and returns Expo's response.
+4. **Connection to the app**
+   Reminder/comment/missed-job logic can call this function instead of talking to Expo directly.
+5. **What breaks if removed?**
+   Server-side jobs cannot deliver push notifications through a shared sender.
+6. **Mental model**
+   This is the post office window for push messages.
+
+### `supabase/functions/send-reminders/index.ts`
+
+1. **What is this file for?**
+   It is the foundation for scheduled reminder sends.
+2. **Most important lines**
+   `REMINDER_JOB_SECRET` protects the job, service-role Supabase access reads `device_tokens`, and the response reports `tokens_seen`.
+3. **Functions/components**
+   The `Deno.serve` handler validates auth and scans registered device tokens.
+4. **Connection to the app**
+   Later reminder logic will combine these tokens with goals nearing their deadline.
+5. **What breaks if removed?**
+   There is no scheduled backend entry point for reminder notifications.
+6. **Mental model**
+   This is the reminder job's starting clipboard.
+
+### `docs/runbooks/notifications.md`
+
+1. **What is this file for?**
+   It documents notification types, failure handling, and required secrets.
+2. **Most important lines**
+   It lists reminders, missed check-ins, comments, token cleanup, non-blocking failures, and bearer-secret invocation.
+3. **Functions/components**
+   None. This is operational documentation.
+4. **Connection to the app**
+   It explains how push delivery should be run and monitored.
+5. **What breaks if removed?**
+   Future setup/debugging loses the notification checklist.
+6. **Mental model**
+   This is the notification operations manual.
+
+### `tests/notifications.test.ts`
+
+1. **What is this file for?**
+   It verifies app-side push token registration without using a real device.
+2. **Most important lines**
+   One test skips simulators, one stores a granted token, and one stops when permission is denied.
+3. **Functions/components**
+   Tests cover `registerPushToken`.
+4. **Connection to the app**
+   Protects the helper future auth/onboarding code will call.
+5. **What breaks if removed?**
+   Token registration could silently stop respecting device checks, permissions, or database shape.
+6. **Mental model**
+   This is a fake phone testing the notification signup flow.
+
+### `tests/push-functions.test.ts`
+
+1. **What is this file for?**
+   It checks the Edge Function source for required push behavior.
+2. **Most important lines**
+   The tests confirm bearer secrets, Expo push API forwarding, service-role token reads, and empty-message protection.
+3. **Functions/components**
+   Source checks cover `send-push` and `send-reminders`.
+4. **Connection to the app**
+   Protects the backend notification entry points.
+5. **What breaks if removed?**
+   Push functions could lose auth or stop targeting the right tables/API without fast feedback.
+6. **Mental model**
+   This is a security checklist for the notification workers.
