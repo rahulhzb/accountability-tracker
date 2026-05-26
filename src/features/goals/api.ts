@@ -18,6 +18,11 @@ export type Goal = {
   today_check_in?: GoalTodayCheckIn | null;
 };
 
+export type ActiveGoalScope =
+  | { type: 'all' }
+  | { type: 'personal' }
+  | { challengeId: string; type: 'challenge' };
+
 export async function createGoal(input: {
   challengeId: string | null;
   title: string;
@@ -38,13 +43,22 @@ export async function createGoal(input: {
   return data as Goal;
 }
 
-export async function listActiveGoals(userId: string) {
-  const { data, error } = await supabase
+export async function listActiveGoals(userId: string, scope: ActiveGoalScope = { type: 'all' }) {
+  let query = supabase
     .from('goals')
     .select('*')
     .eq('owner_user_id', userId)
-    .eq('status', 'active')
-    .order('created_at', { ascending: false });
+    .eq('status', 'active');
+
+  if (scope.type === 'personal') {
+    query = query.is('challenge_id', null);
+  }
+
+  if (scope.type === 'challenge') {
+    query = query.eq('challenge_id', scope.challengeId);
+  }
+
+  const { data, error } = await query.order('created_at', { ascending: false });
 
   if (error) {
     throw error;

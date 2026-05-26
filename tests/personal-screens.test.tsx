@@ -61,7 +61,7 @@ describe('personal tracker screens', () => {
         title: 'Read 20 pages',
       }),
     );
-    expect(listActiveGoals).toHaveBeenCalledWith('user-1');
+    expect(listActiveGoals).toHaveBeenCalledWith('user-1', { type: 'personal' });
   });
 
   it('opens a goal check-in screen from the personal tracker', async () => {
@@ -84,6 +84,7 @@ describe('personal tracker screens', () => {
       params: { goalId: 'goal-1', timezone: 'Asia/Kolkata' },
       pathname: '/check-ins/[goalId]',
     });
+    expect(listActiveGoals).toHaveBeenCalledWith('user-1', { type: 'personal' });
   });
 
   it('submits a done check-in with an optional note', async () => {

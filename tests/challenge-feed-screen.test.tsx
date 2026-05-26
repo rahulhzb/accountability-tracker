@@ -3,9 +3,13 @@ import { fireEvent, render, waitFor } from '@testing-library/react-native';
 import ChallengeDetailScreen from '../app/challenges/[challengeId]';
 import { useAuth } from '../src/features/auth/auth-context';
 import { createComment, listFeedEvents } from '../src/features/feed/api';
-import { createGoal } from '../src/features/goals/api';
+import { createGoal, listActiveGoals } from '../src/features/goals/api';
 
+const mockPush = jest.fn();
 jest.mock('expo-router', () => ({
+  router: {
+    push: (...args: unknown[]) => mockPush(...args),
+  },
   useFocusEffect: (callback: () => void) => {
     const { useEffect } = require('react');
 
@@ -25,12 +29,14 @@ jest.mock('../src/features/feed/api', () => ({
 
 jest.mock('../src/features/goals/api', () => ({
   createGoal: jest.fn(),
+  listActiveGoals: jest.fn(),
 }));
 
 describe('challenge feed screen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     (useAuth as jest.Mock).mockReturnValue({ session: { user: { id: 'user-1' } } });
+    (listActiveGoals as jest.Mock).mockResolvedValue([]);
   });
 
   it('renders feed events and creates comments', async () => {
@@ -80,5 +86,31 @@ describe('challenge feed screen', () => {
         title: 'Walk 30 minutes',
       }),
     );
+    expect(listActiveGoals).toHaveBeenCalledWith('user-1', {
+      challengeId: 'challenge-1',
+      type: 'challenge',
+    });
+  });
+
+  it('opens check-in for a challenge goal', async () => {
+    (listFeedEvents as jest.Mock).mockResolvedValue([]);
+    (listActiveGoals as jest.Mock).mockResolvedValue([
+      {
+        deadline_time: '20:30',
+        id: 'goal-1',
+        timezone: 'Asia/Kolkata',
+        title: 'Walk 30 minutes',
+        today_check_in: null,
+      },
+    ]);
+    const screen = render(<ChallengeDetailScreen />);
+
+    expect(await screen.findByText('Walk 30 minutes')).toBeTruthy();
+    fireEvent.press(screen.getByText('Check in'));
+
+    expect(mockPush).toHaveBeenCalledWith({
+      params: { goalId: 'goal-1', timezone: 'Asia/Kolkata' },
+      pathname: '/check-ins/[goalId]',
+    });
   });
 });

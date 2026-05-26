@@ -1,10 +1,11 @@
-import { useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
   Button,
   FlatList,
+  Pressable,
   StyleSheet,
   Text,
   TextInput,
@@ -13,7 +14,7 @@ import {
 
 import { useAuth } from '@/src/features/auth/auth-context';
 import { createComment, FeedEvent, listFeedEvents } from '@/src/features/feed/api';
-import { createGoal } from '@/src/features/goals/api';
+import { createGoal, Goal, listActiveGoals } from '@/src/features/goals/api';
 
 const labelByEventType = {
   check_in_done: 'Completed',
@@ -26,6 +27,7 @@ export default function ChallengeDetailScreen() {
   const { challengeId } = useLocalSearchParams<{ challengeId: string }>();
   const { session } = useAuth();
   const [events, setEvents] = useState<FeedEvent[]>([]);
+  const [goals, setGoals] = useState<Goal[]>([]);
   const [commentByEventId, setCommentByEventId] = useState<Record<string, string>>({});
   const [goalTitle, setGoalTitle] = useState('');
   const [deadlineTime, setDeadlineTime] = useState('21:00');
@@ -33,7 +35,7 @@ export default function ChallengeDetailScreen() {
   const [creatingGoal, setCreatingGoal] = useState(false);
   const [commentingEventId, setCommentingEventId] = useState<string | null>(null);
 
-  async function loadFeed(shouldApply = () => true) {
+  async function loadChallenge(shouldApply = () => true) {
     if (!challengeId) {
       setLoading(false);
       return;
@@ -42,14 +44,23 @@ export default function ChallengeDetailScreen() {
     setLoading(true);
 
     try {
-      const nextEvents = await listFeedEvents(challengeId);
+      const [nextEvents, nextGoals] = await Promise.all([
+        listFeedEvents(challengeId),
+        session?.user.id
+          ? listActiveGoals(session.user.id, { challengeId, type: 'challenge' })
+          : Promise.resolve([]),
+      ]);
 
       if (shouldApply()) {
         setEvents(nextEvents);
+        setGoals(nextGoals);
       }
     } catch (error) {
       if (shouldApply()) {
-        Alert.alert('Could not load feed', error instanceof Error ? error.message : 'Try again.');
+        Alert.alert(
+          'Could not load challenge',
+          error instanceof Error ? error.message : 'Try again.',
+        );
       }
     } finally {
       if (shouldApply()) {
@@ -76,7 +87,7 @@ export default function ChallengeDetailScreen() {
     try {
       await createComment({ body, feedEventId, userId: session.user.id });
       setCommentByEventId((current) => ({ ...current, [feedEventId]: '' }));
-      await loadFeed();
+      await loadChallenge();
     } catch (error) {
       Alert.alert('Could not post comment', error instanceof Error ? error.message : 'Try again.');
     } finally {
@@ -105,6 +116,7 @@ export default function ChallengeDetailScreen() {
       });
       setGoalTitle('');
       Alert.alert('Goal created', 'This challenge goal is ready for daily check-ins.');
+      await loadChallenge();
     } catch (error) {
       Alert.alert('Could not add goal', error instanceof Error ? error.message : 'Try again.');
     } finally {
@@ -116,12 +128,12 @@ export default function ChallengeDetailScreen() {
     useCallback(() => {
       let active = true;
 
-      void loadFeed(() => active);
+      void loadChallenge(() => active);
 
       return () => {
         active = false;
       };
-    }, [challengeId]),
+    }, [challengeId, session?.user.id]),
   );
 
   return (
@@ -149,6 +161,43 @@ export default function ChallengeDetailScreen() {
           onPress={() => void addChallengeGoal()}
           title={creatingGoal ? 'Adding...' : 'Add group goal'}
         />
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Your goals in this challenge</Text>
+        {goals.length === 0 ? (
+          <Text style={styles.empty}>No challenge goals yet.</Text>
+        ) : (
+          goals.map((goal) => (
+            <View key={goal.id} style={styles.goalRow}>
+              <View style={styles.goalText}>
+                <Text style={styles.goalTitle}>{goal.title}</Text>
+                <Text style={styles.eventMeta}>Deadline {goal.deadline_time}</Text>
+                {goal.today_check_in ? (
+                  <Text style={styles.statusBadge}>
+                    {goal.today_check_in.status === 'done'
+                      ? 'Done today'
+                      : goal.today_check_in.status === 'skipped'
+                        ? 'Skipped today'
+                        : 'Missed today'}
+                  </Text>
+                ) : null}
+              </View>
+              <Pressable
+                onPress={() =>
+                  router.push({
+                    params: { goalId: goal.id, timezone: goal.timezone },
+                    pathname: '/check-ins/[goalId]',
+                  })
+                }
+                style={styles.checkInButton}>
+                <Text style={styles.checkInButtonText}>
+                  {goal.today_check_in ? 'Update' : 'Check in'}
+                </Text>
+              </Pressable>
+            </View>
+          ))
+        )}
       </View>
 
       {loading ? (
@@ -192,6 +241,16 @@ export default function ChallengeDetailScreen() {
 }
 
 const styles = StyleSheet.create({
+  checkInButton: {
+    backgroundColor: '#111827',
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+  },
+  checkInButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+  },
   comment: {
     backgroundColor: '#EEF2FF',
     borderRadius: 10,
@@ -248,10 +307,42 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '800',
   },
+  goalRow: {
+    alignItems: 'center',
+    borderBottomColor: '#E5E7EB',
+    borderBottomWidth: 1,
+    flexDirection: 'row',
+    gap: 12,
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+  },
+  goalText: {
+    flex: 1,
+    gap: 4,
+  },
+  goalTitle: {
+    color: '#111827',
+    fontSize: 17,
+    fontWeight: '700',
+  },
   note: {
     color: '#334155',
     fontSize: 16,
     lineHeight: 22,
+  },
+  section: {
+    gap: 8,
+  },
+  sectionTitle: {
+    color: '#111827',
+    fontSize: 20,
+    fontWeight: '800',
+  },
+  statusBadge: {
+    color: '#0F766E',
+    fontSize: 13,
+    fontWeight: '800',
+    textTransform: 'uppercase',
   },
   title: {
     color: '#111827',

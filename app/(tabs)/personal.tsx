@@ -36,7 +36,7 @@ export default function PersonalScreen() {
     setLoading(true);
 
     try {
-      const nextGoals = await listActiveGoals(session.user.id);
+      const nextGoals = await listActiveGoals(session.user.id, { type: 'personal' });
 
       if (shouldApply()) {
         setGoals(nextGoals);

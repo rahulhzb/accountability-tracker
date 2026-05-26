@@ -49,12 +49,7 @@ describe('goals api', () => {
     });
   });
 
-  it('lists only active goals for the current user', async () => {
-    jest.useFakeTimers().setSystemTime(new Date('2026-05-26T10:00:00.000Z'));
-    const goals = [{ id: 'goal-1', title: 'Read', timezone: 'Asia/Kolkata' }];
-    const checkIns = [
-      { goal_id: 'goal-1', id: 'check-in-1', local_date: '2026-05-26', status: 'done' },
-    ];
+  function mockGoalAndCheckInQueries(goals: unknown[], checkIns: unknown[]) {
     const order = jest.fn().mockResolvedValue({ data: goals, error: null });
     const statusEq = jest.fn(() => ({ order }));
     const ownerEq = jest.fn(() => ({ eq: statusEq }));
@@ -69,6 +64,18 @@ describe('goals api', () => {
       throw new Error(`Unexpected table ${table}`);
     });
 
+    return { checkInOwnerEq, checkInSelect, goalIdIn, localDateIn, order, ownerEq, select, statusEq };
+  }
+
+  it('lists active goals for the current user with today check-in state', async () => {
+    jest.useFakeTimers().setSystemTime(new Date('2026-05-26T10:00:00.000Z'));
+    const goals = [{ id: 'goal-1', title: 'Read', timezone: 'Asia/Kolkata' }];
+    const checkIns = [
+      { goal_id: 'goal-1', id: 'check-in-1', local_date: '2026-05-26', status: 'done' },
+    ];
+    const { checkInOwnerEq, checkInSelect, goalIdIn, localDateIn, order, ownerEq, select, statusEq } =
+      mockGoalAndCheckInQueries(goals, checkIns);
+
     await expect(listActiveGoals('user-1')).resolves.toEqual([
       { ...goals[0], today_check_in: checkIns[0] },
     ]);
@@ -81,5 +88,35 @@ describe('goals api', () => {
     expect(checkInOwnerEq).toHaveBeenCalledWith('user_id', 'user-1');
     expect(goalIdIn).toHaveBeenCalledWith('goal_id', ['goal-1']);
     expect(localDateIn).toHaveBeenCalledWith('local_date', ['2026-05-26']);
+  });
+
+  it('can scope active goals to personal tracker goals', async () => {
+    const order = jest.fn().mockResolvedValue({ data: [], error: null });
+    const personalIs = jest.fn(() => ({ order }));
+    const statusEq = jest.fn(() => ({ is: personalIs, order }));
+    const ownerEq = jest.fn(() => ({ eq: statusEq }));
+    const select = jest.fn(() => ({ eq: ownerEq }));
+    mockFrom.mockReturnValue({ select });
+
+    await expect(listActiveGoals('user-1', { type: 'personal' })).resolves.toEqual([]);
+
+    expect(personalIs).toHaveBeenCalledWith('challenge_id', null);
+    expect(order).toHaveBeenCalledWith('created_at', { ascending: false });
+  });
+
+  it('can scope active goals to one challenge', async () => {
+    const order = jest.fn().mockResolvedValue({ data: [], error: null });
+    const challengeEq = jest.fn(() => ({ order }));
+    const statusEq = jest.fn(() => ({ eq: challengeEq, order }));
+    const ownerEq = jest.fn(() => ({ eq: statusEq }));
+    const select = jest.fn(() => ({ eq: ownerEq }));
+    mockFrom.mockReturnValue({ select });
+
+    await expect(
+      listActiveGoals('user-1', { challengeId: 'challenge-1', type: 'challenge' }),
+    ).resolves.toEqual([]);
+
+    expect(challengeEq).toHaveBeenCalledWith('challenge_id', 'challenge-1');
+    expect(order).toHaveBeenCalledWith('created_at', { ascending: false });
   });
 });
