@@ -3,15 +3,15 @@ import { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  Button,
   FlatList,
   Pressable,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 
+import { AppButton, AppCard, AppInput, AppScreen, Eyebrow, StatusPill } from '@/components/app-ui';
+import { design } from '@/src/design/theme';
 import { useAuth } from '@/src/features/auth/auth-context';
 import { createGoal, Goal, listActiveGoals } from '@/src/features/goals/api';
 
@@ -94,144 +94,111 @@ export default function PersonalScreen() {
   );
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.eyebrow}>Personal tracker</Text>
+    <AppScreen style={styles.container}>
+      <Eyebrow>Personal tracker</Eyebrow>
       <Text style={styles.title}>Daily promises</Text>
+      <Text style={styles.subtitle}>Private commitments that stay calm, visible, and easy to update.</Text>
 
-      <View style={styles.card}>
+      <AppCard style={styles.card}>
         <Text style={styles.cardTitle}>Add a daily goal</Text>
-        <TextInput
+        <AppInput
           onChangeText={setTitle}
           placeholder="Daily goal"
-          style={styles.input}
           value={title}
         />
-        <TextInput
+        <AppInput
           keyboardType="numbers-and-punctuation"
           onChangeText={setDeadlineTime}
           placeholder="Deadline HH:mm"
-          style={styles.input}
           value={deadlineTime}
         />
-        <Button disabled={creating} onPress={addGoal} title={creating ? 'Adding...' : 'Add goal'} />
-      </View>
+        <AppButton disabled={creating} onPress={addGoal} title={creating ? 'Adding...' : 'Add goal'} />
+      </AppCard>
 
       {loading ? (
-        <ActivityIndicator />
+        <ActivityIndicator color={design.color.teal} />
       ) : (
         <FlatList
+          contentContainerStyle={styles.list}
           data={goals}
           keyExtractor={(item) => item.id}
           ListEmptyComponent={<Text style={styles.empty}>No active goals yet.</Text>}
           renderItem={({ item }) => (
-            <View style={styles.goalRow}>
+            <AppCard style={styles.goalRow}>
               <View style={styles.goalText}>
                 <Text style={styles.goalTitle}>{item.title}</Text>
                 <Text style={styles.goalMeta}>Deadline {item.deadline_time}</Text>
-                {item.today_check_in ? (
-                  <Text style={styles.statusBadge}>
-                    {item.today_check_in.status === 'done'
-                      ? 'Done today'
-                      : item.today_check_in.status === 'skipped'
-                        ? 'Skipped today'
-                        : 'Missed today'}
-                  </Text>
-                ) : null}
+                <StatusPill status={item.today_check_in?.status ?? 'pending'} />
               </View>
-              <Pressable
+              <AppButton
                 onPress={() =>
                   router.push({
                     params: { goalId: item.id, timezone: item.timezone },
                     pathname: '/check-ins/[goalId]',
                   })
                 }
-                style={styles.checkInButton}>
-                <Text style={styles.checkInButtonText}>
-                  {item.today_check_in ? 'Update' : 'Check in'}
-                </Text>
-              </Pressable>
-            </View>
+                title={item.today_check_in ? 'Update' : 'Check in'}
+              />
+            </AppCard>
           )}
         />
       )}
-    </View>
+    </AppScreen>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#F7FAFC',
-    borderRadius: 16,
-    gap: 10,
-    padding: 16,
+    gap: 12,
+    padding: 18,
   },
   cardTitle: {
+    color: design.color.ink,
     fontSize: 18,
-    fontWeight: '700',
-  },
-  checkInButton: {
-    backgroundColor: '#111827',
-    borderRadius: 999,
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-  },
-  checkInButtonText: {
-    color: '#FFFFFF',
-    fontWeight: '700',
+    fontWeight: '900',
   },
   container: {
-    flex: 1,
     gap: 18,
     padding: 20,
-    paddingTop: 72,
+    paddingTop: 66,
   },
   empty: {
-    color: '#64748B',
+    color: design.color.muted,
     paddingVertical: 24,
   },
-  eyebrow: {
-    color: '#64748B',
-    fontSize: 13,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-  },
   goalMeta: {
-    color: '#64748B',
+    color: design.color.muted,
   },
   goalRow: {
     alignItems: 'center',
-    borderBottomColor: '#E5E7EB',
-    borderBottomWidth: 1,
     flexDirection: 'row',
     gap: 12,
     justifyContent: 'space-between',
-    paddingVertical: 16,
+    marginBottom: 12,
+    padding: 16,
   },
   goalText: {
     flex: 1,
     gap: 4,
   },
   goalTitle: {
-    fontSize: 17,
-    fontWeight: '700',
+    color: design.color.ink,
+    fontSize: 18,
+    fontWeight: '900',
   },
-  input: {
-    borderColor: '#CBD5E1',
-    borderRadius: 10,
-    borderWidth: 1,
-    fontSize: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+  list: {
+    paddingBottom: 28,
+  },
+  subtitle: {
+    color: design.color.muted,
+    fontSize: 15,
+    lineHeight: 21,
+    marginTop: -10,
   },
   title: {
-    color: '#111827',
-    fontSize: 34,
-    fontWeight: '800',
-  },
-  statusBadge: {
-    color: '#0F766E',
-    fontSize: 13,
-    fontWeight: '800',
-    textTransform: 'uppercase',
+    color: design.color.ink,
+    fontSize: 36,
+    fontWeight: '900',
+    letterSpacing: -1,
   },
 });

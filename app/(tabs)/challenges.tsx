@@ -3,15 +3,15 @@ import { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  Button,
   FlatList,
   Pressable,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 
+import { AppButton, AppCard, AppInput, AppScreen, Eyebrow } from '@/components/app-ui';
+import { design } from '@/src/design/theme';
 import {
   Challenge,
   joinChallengeByInvite,
@@ -76,35 +76,39 @@ export default function ChallengesScreen() {
   );
 
   return (
-    <View style={styles.container}>
+    <AppScreen style={styles.container}>
       <View style={styles.header}>
         <View>
-          <Text style={styles.eyebrow}>Private groups</Text>
+          <Eyebrow>Private groups</Eyebrow>
           <Text style={styles.title}>Challenges</Text>
+          <Text style={styles.subtitle}>Build a small circle where commitments stay visible.</Text>
         </View>
         <Link asChild href="/challenges/new">
-          <Pressable style={styles.newButton}>
-            <Text style={styles.newButtonText}>New</Text>
-          </Pressable>
+          <AppButton title="New" />
         </Link>
       </View>
 
-      <View style={styles.card}>
+      <AppCard style={styles.card}>
         <Text style={styles.cardTitle}>Join with invite</Text>
-        <TextInput
+        <AppInput
           autoCapitalize="characters"
           onChangeText={setInviteCode}
           placeholder="Invite code"
-          style={styles.input}
           value={inviteCode}
         />
-        <Button disabled={joining} onPress={joinChallenge} title="Join challenge" />
-      </View>
+        <AppButton
+          disabled={joining}
+          onPress={joinChallenge}
+          title={joining ? 'Joining...' : 'Join challenge'}
+          variant="secondary"
+        />
+      </AppCard>
 
       {loading ? (
-        <ActivityIndicator />
+        <ActivityIndicator color={design.color.teal} />
       ) : (
         <FlatList
+          contentContainerStyle={styles.list}
           data={challenges}
           keyExtractor={(item) => item.id}
           ListEmptyComponent={
@@ -115,83 +119,72 @@ export default function ChallengesScreen() {
           renderItem={({ item }) => (
             <Pressable
               onPress={() => router.push(`/challenges/${item.id}`)}
-              style={styles.challengeRow}>
-              <Text style={styles.challengeName}>{item.name}</Text>
-              <Text style={styles.inviteCode}>Invite: {item.invite_code}</Text>
+              style={styles.pressable}>
+              <AppCard style={styles.challengeRow}>
+                <Text style={styles.challengeName}>{item.name}</Text>
+                <Text style={styles.inviteCode}>Invite: {item.invite_code}</Text>
+              </AppCard>
             </Pressable>
           )}
         />
       )}
-    </View>
+    </AppScreen>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#F7FAFC',
-    borderRadius: 16,
-    gap: 10,
-    padding: 16,
+    gap: 12,
+    padding: 18,
   },
   cardTitle: {
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: '900',
   },
   challengeName: {
-    fontSize: 17,
-    fontWeight: '700',
+    color: design.color.ink,
+    fontSize: 19,
+    fontWeight: '900',
   },
   challengeRow: {
-    borderBottomColor: '#E5E7EB',
-    borderBottomWidth: 1,
-    gap: 4,
-    paddingVertical: 16,
+    gap: 6,
+    padding: 18,
   },
   container: {
-    flex: 1,
     gap: 18,
     padding: 20,
-    paddingTop: 72,
+    paddingTop: 66,
   },
   empty: {
-    color: '#64748B',
+    color: design.color.muted,
     paddingVertical: 24,
   },
-  eyebrow: {
-    color: '#64748B',
-    fontSize: 13,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-  },
   header: {
-    alignItems: 'center',
+    alignItems: 'flex-start',
     flexDirection: 'row',
+    gap: 16,
     justifyContent: 'space-between',
   },
-  input: {
-    borderColor: '#CBD5E1',
-    borderRadius: 10,
-    borderWidth: 1,
-    fontSize: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-  },
   inviteCode: {
-    color: '#64748B',
+    color: design.color.muted,
   },
-  newButton: {
-    backgroundColor: '#111827',
-    borderRadius: 999,
-    paddingHorizontal: 18,
-    paddingVertical: 10,
+  list: {
+    paddingBottom: 28,
   },
-  newButtonText: {
-    color: '#FFFFFF',
-    fontWeight: '700',
+  pressable: {
+    marginBottom: 12,
+  },
+  subtitle: {
+    color: design.color.muted,
+    fontSize: 15,
+    lineHeight: 21,
+    marginTop: 5,
+    maxWidth: 240,
   },
   title: {
-    color: '#111827',
-    fontSize: 34,
-    fontWeight: '800',
+    color: design.color.ink,
+    fontSize: 36,
+    fontWeight: '900',
+    letterSpacing: -1,
   },
 });

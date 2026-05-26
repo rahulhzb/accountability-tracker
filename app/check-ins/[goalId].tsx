@@ -1,7 +1,9 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { Alert, Button, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, StyleSheet, Text, View } from 'react-native';
 
+import { AppButton, AppCard, AppInput, AppScreen, Eyebrow } from '@/components/app-ui';
+import { design } from '@/src/design/theme';
 import { useAuth } from '@/src/features/auth/auth-context';
 import { CheckInStatus, submitCheckIn } from '@/src/features/check-ins/api';
 
@@ -46,58 +48,64 @@ export default function CheckInScreen() {
   }
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.eyebrow}>Today</Text>
-      <Text style={styles.title}>Check in</Text>
-      <Text style={styles.subtitle}>Mark whether you completed this commitment today.</Text>
-      <TextInput
-        multiline
-        onChangeText={setNote}
-        placeholder="Optional note"
-        style={[styles.input, styles.textArea]}
-        value={note}
-      />
-      <Button disabled={loading} onPress={() => void submit('done')} title="Mark done" />
-      <Button disabled={loading} onPress={() => void submit('skipped')} title="Skip today" />
-      <Button disabled={loading} onPress={() => router.replace('/(tabs)')} title="Back to Today" />
-    </View>
+    <AppScreen style={styles.container}>
+      <View style={styles.hero}>
+        <Eyebrow>Today</Eyebrow>
+        <Text style={styles.title}>Check in</Text>
+        <Text style={styles.subtitle}>Choose the honest status. A short note is optional.</Text>
+      </View>
+      <AppCard style={styles.card}>
+        <AppInput
+          multiline
+          onChangeText={setNote}
+          placeholder="Optional note"
+          value={note}
+        />
+        <View style={styles.actions}>
+          <AppButton disabled={loading} onPress={() => void submit('done')} title="Mark done" />
+          <AppButton
+            disabled={loading}
+            onPress={() => void submit('skipped')}
+            title="Skip today"
+            variant="secondary"
+          />
+          <AppButton
+            disabled={loading}
+            onPress={() => router.replace('/(tabs)')}
+            title="Back to Today"
+            variant="ghost"
+          />
+        </View>
+      </AppCard>
+    </AppScreen>
   );
 }
 
 const styles = StyleSheet.create({
+  actions: {
+    gap: 10,
+  },
+  card: {
+    gap: 16,
+    padding: 18,
+  },
   container: {
-    flex: 1,
-    gap: 14,
+    gap: 18,
     padding: 24,
     paddingTop: 84,
   },
-  eyebrow: {
-    color: '#64748B',
-    fontSize: 13,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-  },
-  input: {
-    borderColor: '#CBD5E1',
-    borderRadius: 12,
-    borderWidth: 1,
-    fontSize: 16,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+  hero: {
+    gap: 8,
   },
   subtitle: {
-    color: '#475569',
-    fontSize: 16,
-    lineHeight: 23,
-    marginBottom: 8,
-  },
-  textArea: {
-    minHeight: 120,
-    textAlignVertical: 'top',
+    color: design.color.muted,
+    fontSize: 17,
+    lineHeight: 24,
   },
   title: {
-    color: '#111827',
-    fontSize: 34,
-    fontWeight: '800',
+    color: design.color.ink,
+    fontSize: 40,
+    fontWeight: '900',
+    letterSpacing: -1.4,
   },
 });

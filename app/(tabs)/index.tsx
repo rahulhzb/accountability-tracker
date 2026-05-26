@@ -2,6 +2,8 @@ import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { AppCard, AppScreen, Eyebrow, StatusPill } from '@/components/app-ui';
+import { design } from '@/src/design/theme';
 import { useAuth } from '@/src/features/auth/auth-context';
 import { Challenge } from '@/src/features/challenges/api';
 import { Goal } from '@/src/features/goals/api';
@@ -86,18 +88,36 @@ export default function HomeScreen() {
   );
 
   const items = buildHomeItems(goals, challenges);
+  const completedCount = goals.filter((goal) => goal.today_check_in?.status === 'done').length;
+  const pendingCount = Math.max(goals.length - completedCount, 0);
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.eyebrow}>Today</Text>
-      <Text style={styles.title}>Keep your word</Text>
+    <AppScreen style={styles.container}>
+      <View style={styles.hero}>
+        <Eyebrow>Today</Eyebrow>
+        <Text style={styles.title}>Keep your word</Text>
+        <Text style={styles.subtitle}>A clear view of today's promises and the people counting with you.</Text>
+        <View style={styles.statsRow}>
+          <View style={styles.statBlock}>
+            <Text style={styles.statValue}>{completedCount}</Text>
+            <Text style={styles.statLabel}>done</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statBlock}>
+            <Text style={styles.statValue}>{pendingCount}</Text>
+            <Text style={styles.statLabel}>open</Text>
+          </View>
+        </View>
+      </View>
 
       {loading ? (
-        <ActivityIndicator />
+        <ActivityIndicator color={design.color.teal} />
       ) : (
         <FlatList
+          contentContainerStyle={styles.list}
           data={items}
           keyExtractor={(item) => item.id}
+          showsVerticalScrollIndicator={false}
           renderItem={({ item }) => {
             if (item.type === 'header') {
               return (
@@ -109,6 +129,7 @@ export default function HomeScreen() {
             }
 
             if (item.type === 'goal') {
+              const status = item.goal.today_check_in?.status ?? 'pending';
               return (
                 <Pressable
                   onPress={() =>
@@ -117,18 +138,14 @@ export default function HomeScreen() {
                       pathname: '/check-ins/[goalId]',
                     })
                   }
-                  style={styles.card}>
-                  <Text style={styles.cardTitle}>{item.goal.title}</Text>
-                  <Text style={styles.cardMeta}>Deadline {item.goal.deadline_time}</Text>
-                  {item.goal.today_check_in ? (
-                    <Text style={styles.statusBadge}>
-                      {item.goal.today_check_in.status === 'done'
-                        ? 'Done today'
-                        : item.goal.today_check_in.status === 'skipped'
-                          ? 'Skipped today'
-                          : 'Missed today'}
-                    </Text>
-                  ) : null}
+                  style={styles.pressable}>
+                  <AppCard style={styles.card}>
+                    <View style={styles.cardTopline}>
+                      <Text style={styles.cardTitle}>{item.goal.title}</Text>
+                      <StatusPill status={status} />
+                    </View>
+                    <Text style={styles.cardMeta}>Deadline {item.goal.deadline_time}</Text>
+                  </AppCard>
                 </Pressable>
               );
             }
@@ -137,9 +154,11 @@ export default function HomeScreen() {
               return (
                 <Pressable
                   onPress={() => router.push(`/challenges/${item.challenge.id}`)}
-                  style={styles.card}>
-                  <Text style={styles.cardTitle}>{item.challenge.name}</Text>
-                  <Text style={styles.cardMeta}>Invite {item.challenge.invite_code}</Text>
+                  style={styles.pressable}>
+                  <AppCard style={styles.challengeCard}>
+                    <Text style={styles.cardTitle}>{item.challenge.name}</Text>
+                    <Text style={styles.cardMeta}>Invite {item.challenge.invite_code}</Text>
+                  </AppCard>
                 </Pressable>
               );
             }
@@ -154,67 +173,107 @@ export default function HomeScreen() {
           }}
         />
       )}
-    </View>
+    </AppScreen>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#F8FAFC',
-    borderColor: '#E2E8F0',
-    borderRadius: 18,
-    borderWidth: 1,
     gap: 6,
-    marginBottom: 10,
-    padding: 16,
+    padding: 18,
+  },
+  cardTopline: {
+    alignItems: 'flex-start',
+    flexDirection: 'row',
+    gap: 12,
+    justifyContent: 'space-between',
   },
   cardMeta: {
-    color: '#64748B',
+    color: design.color.muted,
+    fontSize: 14,
   },
   cardTitle: {
-    color: '#111827',
-    fontSize: 17,
+    color: design.color.ink,
+    flex: 1,
+    fontSize: 18,
     fontWeight: '800',
   },
+  challengeCard: {
+    gap: 6,
+    padding: 18,
+  },
   container: {
-    flex: 1,
     padding: 20,
-    paddingTop: 72,
+    paddingTop: 66,
   },
   empty: {
-    color: '#64748B',
+    color: design.color.muted,
     lineHeight: 20,
     marginBottom: 18,
   },
-  eyebrow: {
-    color: '#64748B',
-    fontSize: 13,
-    fontWeight: '700',
-    textTransform: 'uppercase',
+  hero: {
+    backgroundColor: design.color.primary,
+    borderRadius: design.radius.xl,
+    gap: 10,
+    marginBottom: 8,
+    overflow: 'hidden',
+    padding: 22,
+  },
+  list: {
+    paddingBottom: 28,
+  },
+  pressable: {
+    marginBottom: 12,
   },
   sectionHeader: {
     gap: 4,
-    marginBottom: 10,
-    marginTop: 24,
+    marginBottom: 12,
+    marginTop: 22,
   },
   sectionSubtitle: {
-    color: '#64748B',
+    color: design.color.muted,
   },
   sectionTitle: {
-    color: '#111827',
+    color: design.color.ink,
     fontSize: 22,
     fontWeight: '800',
   },
-  statusBadge: {
-    color: '#0F766E',
-    fontSize: 13,
+  statBlock: {
+    flex: 1,
+  },
+  statDivider: {
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    width: 1,
+  },
+  statLabel: {
+    color: 'rgba(255,255,255,0.62)',
+    fontSize: 12,
     fontWeight: '800',
+    letterSpacing: 1,
     textTransform: 'uppercase',
   },
+  statsRow: {
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderRadius: design.radius.lg,
+    flexDirection: 'row',
+    gap: 18,
+    marginTop: 8,
+    padding: 16,
+  },
+  statValue: {
+    color: '#FFFFFF',
+    fontSize: 28,
+    fontWeight: '900',
+  },
+  subtitle: {
+    color: 'rgba(255,255,255,0.72)',
+    fontSize: 16,
+    lineHeight: 23,
+  },
   title: {
-    color: '#111827',
+    color: '#FFFFFF',
     fontSize: 36,
     fontWeight: '900',
-    marginBottom: 6,
+    letterSpacing: -1,
   },
 });

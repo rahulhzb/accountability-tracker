@@ -1,6 +1,8 @@
 import { useState } from 'react';
-import { Alert, Button, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, StyleSheet, Text, View } from 'react-native';
 
+import { AppButton, AppCard, AppInput, AppScreen, Eyebrow } from '@/components/app-ui';
+import { design } from '@/src/design/theme';
 import { supabase } from '../../src/lib/supabase';
 
 export default function SignInScreen() {
@@ -32,55 +34,58 @@ export default function SignInScreen() {
   }
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Accountability Tracker</Text>
-      <Text style={styles.subtitle}>Check in daily. Keep promises visible.</Text>
-      <TextInput
-        autoCapitalize="none"
-        autoComplete="email"
-        keyboardType="email-address"
-        onChangeText={setEmail}
-        placeholder="Email"
-        style={styles.input}
-        value={email}
-      />
-      <TextInput
-        autoComplete="password"
-        onChangeText={setPassword}
-        placeholder="Password"
-        secureTextEntry
-        style={styles.input}
-        value={password}
-      />
-      <Button disabled={loading} onPress={signIn} title={loading ? 'Working...' : 'Sign in'} />
-      <Button disabled={loading} onPress={signUp} title="Create account" />
-    </View>
+    <AppScreen style={styles.container}>
+      <View style={styles.hero}>
+        <Eyebrow>Private accountability</Eyebrow>
+        <Text style={styles.title}>Keep promises with people who care.</Text>
+        <Text style={styles.subtitle}>Daily check-ins for friend groups, personal goals, and the moments you do not want to quietly drop.</Text>
+      </View>
+      <AppCard style={styles.form}>
+        <AppInput
+          autoCapitalize="none"
+          autoComplete="email"
+          keyboardType="email-address"
+          onChangeText={setEmail}
+          placeholder="Email"
+          value={email}
+        />
+        <AppInput
+          autoComplete="password"
+          onChangeText={setPassword}
+          placeholder="Password"
+          secureTextEntry
+          value={password}
+        />
+        <AppButton disabled={loading} onPress={signIn} title={loading ? 'Working...' : 'Sign in'} />
+        <AppButton disabled={loading} onPress={signUp} title="Create account" variant="secondary" />
+      </AppCard>
+    </AppScreen>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    gap: 12,
     justifyContent: 'center',
     padding: 24,
   },
-  input: {
-    borderColor: '#C8D0D9',
-    borderRadius: 10,
-    borderWidth: 1,
-    fontSize: 16,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+  form: {
+    gap: 12,
+    padding: 18,
+  },
+  hero: {
+    gap: 10,
+    marginBottom: 22,
   },
   subtitle: {
-    color: '#546170',
+    color: design.color.muted,
     fontSize: 16,
-    marginBottom: 12,
+    lineHeight: 23,
   },
   title: {
-    color: '#111827',
-    fontSize: 30,
-    fontWeight: '700',
+    color: design.color.ink,
+    fontSize: 38,
+    fontWeight: '900',
+    letterSpacing: -1.4,
+    lineHeight: 42,
   },
 });

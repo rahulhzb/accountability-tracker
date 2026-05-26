@@ -3,15 +3,14 @@ import { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  Button,
   FlatList,
-  Pressable,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 
+import { AppButton, AppCard, AppInput, AppScreen, Eyebrow, StatusPill } from '@/components/app-ui';
+import { design } from '@/src/design/theme';
 import { useAuth } from '@/src/features/auth/auth-context';
 import { createComment, FeedEvent, listFeedEvents } from '@/src/features/feed/api';
 import { createGoal, Goal, listActiveGoals } from '@/src/features/goals/api';
@@ -137,31 +136,30 @@ export default function ChallengeDetailScreen() {
   );
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.eyebrow}>Challenge</Text>
+    <AppScreen style={styles.container}>
+      <Eyebrow>Challenge</Eyebrow>
       <Text style={styles.title}>Feed</Text>
+      <Text style={styles.subtitle}>A shared record of commitments, misses, and encouragement.</Text>
 
-      <View style={styles.goalCard}>
+      <AppCard style={styles.goalCard}>
         <Text style={styles.goalCardTitle}>Add a group goal</Text>
-        <TextInput
+        <AppInput
           onChangeText={setGoalTitle}
           placeholder="Daily group commitment"
-          style={styles.input}
           value={goalTitle}
         />
-        <TextInput
+        <AppInput
           keyboardType="numbers-and-punctuation"
           onChangeText={setDeadlineTime}
           placeholder="Deadline HH:mm"
-          style={styles.input}
           value={deadlineTime}
         />
-        <Button
+        <AppButton
           disabled={creatingGoal}
           onPress={() => void addChallengeGoal()}
           title={creatingGoal ? 'Adding...' : 'Add group goal'}
         />
-      </View>
+      </AppCard>
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Your goals in this challenge</Text>
@@ -169,48 +167,40 @@ export default function ChallengeDetailScreen() {
           <Text style={styles.empty}>No challenge goals yet.</Text>
         ) : (
           goals.map((goal) => (
-            <View key={goal.id} style={styles.goalRow}>
+            <AppCard key={goal.id} style={styles.goalRow}>
               <View style={styles.goalText}>
                 <Text style={styles.goalTitle}>{goal.title}</Text>
                 <Text style={styles.eventMeta}>Deadline {goal.deadline_time}</Text>
-                {goal.today_check_in ? (
-                  <Text style={styles.statusBadge}>
-                    {goal.today_check_in.status === 'done'
-                      ? 'Done today'
-                      : goal.today_check_in.status === 'skipped'
-                        ? 'Skipped today'
-                        : 'Missed today'}
-                  </Text>
-                ) : null}
+                <StatusPill status={goal.today_check_in?.status ?? 'pending'} />
               </View>
-              <Pressable
+              <AppButton
                 onPress={() =>
                   router.push({
                     params: { goalId: goal.id, timezone: goal.timezone },
                     pathname: '/check-ins/[goalId]',
                   })
                 }
-                style={styles.checkInButton}>
-                <Text style={styles.checkInButtonText}>
-                  {goal.today_check_in ? 'Update' : 'Check in'}
-                </Text>
-              </Pressable>
-            </View>
+                title={goal.today_check_in ? 'Update' : 'Check in'}
+              />
+            </AppCard>
           ))
         )}
       </View>
 
       {loading ? (
-        <ActivityIndicator />
+        <ActivityIndicator color={design.color.teal} />
       ) : (
         <FlatList
+          contentContainerStyle={styles.feedList}
           data={events}
           keyExtractor={(item) => item.id}
           ListEmptyComponent={<Text style={styles.empty}>No check-ins yet.</Text>}
           renderItem={({ item }) => (
-            <View style={styles.eventCard}>
-              <Text style={styles.eventLabel}>{labelByEventType[item.event_type]}</Text>
-              <Text style={styles.eventMeta}>{item.check_ins?.local_date ?? 'Today'}</Text>
+            <AppCard style={styles.eventCard}>
+              <View style={styles.eventHeader}>
+                <Text style={styles.eventLabel}>{labelByEventType[item.event_type]}</Text>
+                <Text style={styles.eventMeta}>{item.check_ins?.local_date ?? 'Today'}</Text>
+              </View>
               {item.check_ins?.note ? (
                 <Text style={styles.note}>{item.check_ins.note}</Text>
               ) : null}
@@ -219,114 +209,92 @@ export default function ChallengeDetailScreen() {
                   {comment.body}
                 </Text>
               ))}
-              <TextInput
+              <AppInput
                 onChangeText={(text) =>
                   setCommentByEventId((current) => ({ ...current, [item.id]: text }))
                 }
                 placeholder="Write a response"
-                style={styles.input}
                 value={commentByEventId[item.id] ?? ''}
               />
-              <Button
+              <AppButton
                 disabled={commentingEventId === item.id}
                 onPress={() => void submitComment(item.id)}
-                title="Comment"
+                title={commentingEventId === item.id ? 'Posting...' : 'Comment'}
+                variant="secondary"
               />
-            </View>
+            </AppCard>
           )}
         />
       )}
-    </View>
+    </AppScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  checkInButton: {
-    backgroundColor: '#111827',
-    borderRadius: 999,
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-  },
-  checkInButtonText: {
-    color: '#FFFFFF',
-    fontWeight: '700',
-  },
   comment: {
-    backgroundColor: '#EEF2FF',
-    borderRadius: 10,
-    color: '#1E293B',
+    backgroundColor: design.color.wash,
+    borderRadius: design.radius.md,
+    color: design.color.inkSoft,
     padding: 10,
   },
   container: {
-    flex: 1,
     gap: 14,
     padding: 20,
-    paddingTop: 72,
+    paddingTop: 66,
   },
   empty: {
-    color: '#64748B',
+    color: design.color.muted,
     paddingVertical: 24,
   },
   eventCard: {
-    backgroundColor: '#F8FAFC',
-    borderRadius: 16,
     gap: 10,
     marginBottom: 14,
     padding: 16,
   },
+  eventHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
   eventLabel: {
-    color: '#111827',
+    color: design.color.ink,
     fontSize: 20,
     fontWeight: '800',
   },
   eventMeta: {
-    color: '#64748B',
+    color: design.color.muted,
   },
-  eyebrow: {
-    color: '#64748B',
-    fontSize: 13,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-  },
-  input: {
-    borderColor: '#CBD5E1',
-    borderRadius: 10,
-    borderWidth: 1,
-    fontSize: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+  feedList: {
+    paddingBottom: 28,
   },
   goalCard: {
-    backgroundColor: '#F7FAFC',
-    borderRadius: 16,
-    gap: 10,
-    padding: 16,
+    gap: 12,
+    padding: 18,
   },
   goalCardTitle: {
-    color: '#111827',
+    color: design.color.ink,
     fontSize: 18,
     fontWeight: '800',
   },
   goalRow: {
     alignItems: 'center',
-    borderBottomColor: '#E5E7EB',
-    borderBottomWidth: 1,
     flexDirection: 'row',
     gap: 12,
     justifyContent: 'space-between',
-    paddingVertical: 12,
+    marginBottom: 10,
+    padding: 16,
   },
   goalText: {
     flex: 1,
     gap: 4,
   },
   goalTitle: {
-    color: '#111827',
+    color: design.color.ink,
     fontSize: 17,
-    fontWeight: '700',
+    fontWeight: '900',
   },
   note: {
-    color: '#334155',
+    color: design.color.inkSoft,
     fontSize: 16,
     lineHeight: 22,
   },
@@ -334,19 +302,19 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   sectionTitle: {
-    color: '#111827',
+    color: design.color.ink,
     fontSize: 20,
     fontWeight: '800',
   },
-  statusBadge: {
-    color: '#0F766E',
-    fontSize: 13,
-    fontWeight: '800',
-    textTransform: 'uppercase',
+  subtitle: {
+    color: design.color.muted,
+    fontSize: 15,
+    lineHeight: 21,
   },
   title: {
-    color: '#111827',
-    fontSize: 34,
-    fontWeight: '800',
+    color: design.color.ink,
+    fontSize: 38,
+    fontWeight: '900',
+    letterSpacing: -1.2,
   },
 });
