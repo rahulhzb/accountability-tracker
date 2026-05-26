@@ -7,11 +7,13 @@ import { submitCheckIn } from '../src/features/check-ins/api';
 import { createGoal, listActiveGoals } from '../src/features/goals/api';
 
 const mockPush = jest.fn();
+const mockReplace = jest.fn();
 let mockParams: Record<string, string> = { goalId: 'goal-1' };
 
 jest.mock('expo-router', () => ({
   router: {
     push: (...args: unknown[]) => mockPush(...args),
+    replace: (...args: unknown[]) => mockReplace(...args),
     back: jest.fn(),
   },
   useFocusEffect: (callback: () => void) => {
@@ -104,5 +106,15 @@ describe('personal tracker screens', () => {
         userId: 'user-1',
       }),
     );
+    expect(mockReplace).toHaveBeenCalledWith('/(tabs)');
+  });
+
+  it('can leave check-in and return directly to Today', () => {
+    mockParams = { goalId: 'goal-1', timezone: 'America/Los_Angeles' };
+    const screen = render(<CheckInScreen />);
+
+    fireEvent.press(screen.getByText('Back to Today'));
+
+    expect(mockReplace).toHaveBeenCalledWith('/(tabs)');
   });
 });

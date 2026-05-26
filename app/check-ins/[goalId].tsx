@@ -37,7 +37,7 @@ export default function CheckInScreen() {
         timezone,
         userId: session.user.id,
       });
-      router.back();
+      router.replace('/(tabs)');
     } catch (error) {
       Alert.alert('Could not check in', error instanceof Error ? error.message : 'Try again.');
     } finally {
@@ -59,6 +59,7 @@ export default function CheckInScreen() {
       />
       <Button disabled={loading} onPress={() => void submit('done')} title="Mark done" />
       <Button disabled={loading} onPress={() => void submit('skipped')} title="Skip today" />
+      <Button disabled={loading} onPress={() => router.replace('/(tabs)')} title="Back to Today" />
     </View>
   );
 }
