@@ -13,6 +13,7 @@ import {
 
 import { useAuth } from '@/src/features/auth/auth-context';
 import { createComment, FeedEvent, listFeedEvents } from '@/src/features/feed/api';
+import { createGoal } from '@/src/features/goals/api';
 
 const labelByEventType = {
   check_in_done: 'Completed',
@@ -26,7 +27,10 @@ export default function ChallengeDetailScreen() {
   const { session } = useAuth();
   const [events, setEvents] = useState<FeedEvent[]>([]);
   const [commentByEventId, setCommentByEventId] = useState<Record<string, string>>({});
+  const [goalTitle, setGoalTitle] = useState('');
+  const [deadlineTime, setDeadlineTime] = useState('21:00');
   const [loading, setLoading] = useState(true);
+  const [creatingGoal, setCreatingGoal] = useState(false);
   const [commentingEventId, setCommentingEventId] = useState<string | null>(null);
 
   async function loadFeed(shouldApply = () => true) {
@@ -80,6 +84,34 @@ export default function ChallengeDetailScreen() {
     }
   }
 
+  async function addChallengeGoal() {
+    if (!challengeId) {
+      return;
+    }
+
+    if (!goalTitle.trim()) {
+      Alert.alert('Goal required', 'Write the daily commitment for this challenge.');
+      return;
+    }
+
+    setCreatingGoal(true);
+
+    try {
+      await createGoal({
+        challengeId,
+        deadlineTime,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
+        title: goalTitle,
+      });
+      setGoalTitle('');
+      Alert.alert('Goal created', 'This challenge goal is ready for daily check-ins.');
+    } catch (error) {
+      Alert.alert('Could not add goal', error instanceof Error ? error.message : 'Try again.');
+    } finally {
+      setCreatingGoal(false);
+    }
+  }
+
   useFocusEffect(
     useCallback(() => {
       let active = true;
@@ -96,6 +128,28 @@ export default function ChallengeDetailScreen() {
     <View style={styles.container}>
       <Text style={styles.eyebrow}>Challenge</Text>
       <Text style={styles.title}>Feed</Text>
+
+      <View style={styles.goalCard}>
+        <Text style={styles.goalCardTitle}>Add a group goal</Text>
+        <TextInput
+          onChangeText={setGoalTitle}
+          placeholder="Daily group commitment"
+          style={styles.input}
+          value={goalTitle}
+        />
+        <TextInput
+          keyboardType="numbers-and-punctuation"
+          onChangeText={setDeadlineTime}
+          placeholder="Deadline HH:mm"
+          style={styles.input}
+          value={deadlineTime}
+        />
+        <Button
+          disabled={creatingGoal}
+          onPress={() => void addChallengeGoal()}
+          title={creatingGoal ? 'Adding...' : 'Add group goal'}
+        />
+      </View>
 
       {loading ? (
         <ActivityIndicator />
@@ -182,6 +236,17 @@ const styles = StyleSheet.create({
     fontSize: 16,
     paddingHorizontal: 12,
     paddingVertical: 10,
+  },
+  goalCard: {
+    backgroundColor: '#F7FAFC',
+    borderRadius: 16,
+    gap: 10,
+    padding: 16,
+  },
+  goalCardTitle: {
+    color: '#111827',
+    fontSize: 18,
+    fontWeight: '800',
   },
   note: {
     color: '#334155',

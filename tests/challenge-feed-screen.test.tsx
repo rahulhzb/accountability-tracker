@@ -3,6 +3,7 @@ import { fireEvent, render, waitFor } from '@testing-library/react-native';
 import ChallengeDetailScreen from '../app/challenges/[challengeId]';
 import { useAuth } from '../src/features/auth/auth-context';
 import { createComment, listFeedEvents } from '../src/features/feed/api';
+import { createGoal } from '../src/features/goals/api';
 
 jest.mock('expo-router', () => ({
   useFocusEffect: (callback: () => void) => {
@@ -20,6 +21,10 @@ jest.mock('../src/features/auth/auth-context', () => ({
 jest.mock('../src/features/feed/api', () => ({
   createComment: jest.fn(),
   listFeedEvents: jest.fn(),
+}));
+
+jest.mock('../src/features/goals/api', () => ({
+  createGoal: jest.fn(),
 }));
 
 describe('challenge feed screen', () => {
@@ -52,6 +57,27 @@ describe('challenge feed screen', () => {
         body: 'Proud of you',
         feedEventId: 'event-1',
         userId: 'user-1',
+      }),
+    );
+  });
+
+  it('creates challenge goals from the feed screen', async () => {
+    (listFeedEvents as jest.Mock).mockResolvedValue([]);
+    (createGoal as jest.Mock).mockResolvedValue({ id: 'goal-1' });
+    const screen = render(<ChallengeDetailScreen />);
+
+    await screen.findByText('No check-ins yet.');
+
+    fireEvent.changeText(screen.getByPlaceholderText('Daily group commitment'), 'Walk 30 minutes');
+    fireEvent.changeText(screen.getByPlaceholderText('Deadline HH:mm'), '20:30');
+    fireEvent.press(screen.getByText('Add group goal'));
+
+    await waitFor(() =>
+      expect(createGoal).toHaveBeenCalledWith({
+        challengeId: 'challenge-1',
+        deadlineTime: '20:30',
+        timezone: expect.any(String),
+        title: 'Walk 30 minutes',
       }),
     );
   });
