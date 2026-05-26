@@ -15,6 +15,10 @@ describe('goals api', () => {
     jest.clearAllMocks();
   });
 
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
   it('creates a personal goal through the database RPC', async () => {
     const goal = {
       id: 'goal-1',
@@ -46,18 +50,36 @@ describe('goals api', () => {
   });
 
   it('lists only active goals for the current user', async () => {
-    const goals = [{ id: 'goal-1', title: 'Read' }];
+    jest.useFakeTimers().setSystemTime(new Date('2026-05-26T10:00:00.000Z'));
+    const goals = [{ id: 'goal-1', title: 'Read', timezone: 'Asia/Kolkata' }];
+    const checkIns = [
+      { goal_id: 'goal-1', id: 'check-in-1', local_date: '2026-05-26', status: 'done' },
+    ];
     const order = jest.fn().mockResolvedValue({ data: goals, error: null });
     const statusEq = jest.fn(() => ({ order }));
     const ownerEq = jest.fn(() => ({ eq: statusEq }));
     const select = jest.fn(() => ({ eq: ownerEq }));
-    mockFrom.mockReturnValue({ select });
+    const localDateIn = jest.fn().mockResolvedValue({ data: checkIns, error: null });
+    const goalIdIn = jest.fn(() => ({ in: localDateIn }));
+    const checkInOwnerEq = jest.fn(() => ({ in: goalIdIn }));
+    const checkInSelect = jest.fn(() => ({ eq: checkInOwnerEq }));
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'goals') return { select };
+      if (table === 'check_ins') return { select: checkInSelect };
+      throw new Error(`Unexpected table ${table}`);
+    });
 
-    await expect(listActiveGoals('user-1')).resolves.toBe(goals);
+    await expect(listActiveGoals('user-1')).resolves.toEqual([
+      { ...goals[0], today_check_in: checkIns[0] },
+    ]);
 
     expect(select).toHaveBeenCalledWith('*');
     expect(ownerEq).toHaveBeenCalledWith('owner_user_id', 'user-1');
     expect(statusEq).toHaveBeenCalledWith('status', 'active');
     expect(order).toHaveBeenCalledWith('created_at', { ascending: false });
+    expect(checkInSelect).toHaveBeenCalledWith('id, goal_id, local_date, status');
+    expect(checkInOwnerEq).toHaveBeenCalledWith('user_id', 'user-1');
+    expect(goalIdIn).toHaveBeenCalledWith('goal_id', ['goal-1']);
+    expect(localDateIn).toHaveBeenCalledWith('local_date', ['2026-05-26']);
   });
 });

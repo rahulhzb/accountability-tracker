@@ -120,6 +120,15 @@ export default function HomeScreen() {
                   style={styles.card}>
                   <Text style={styles.cardTitle}>{item.goal.title}</Text>
                   <Text style={styles.cardMeta}>Deadline {item.goal.deadline_time}</Text>
+                  {item.goal.today_check_in ? (
+                    <Text style={styles.statusBadge}>
+                      {item.goal.today_check_in.status === 'done'
+                        ? 'Done today'
+                        : item.goal.today_check_in.status === 'skipped'
+                          ? 'Skipped today'
+                          : 'Missed today'}
+                    </Text>
+                  ) : null}
                 </Pressable>
               );
             }
@@ -195,6 +204,12 @@ const styles = StyleSheet.create({
     color: '#111827',
     fontSize: 22,
     fontWeight: '800',
+  },
+  statusBadge: {
+    color: '#0F766E',
+    fontSize: 13,
+    fontWeight: '800',
+    textTransform: 'uppercase',
   },
   title: {
     color: '#111827',

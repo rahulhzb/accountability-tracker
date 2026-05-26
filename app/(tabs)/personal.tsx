@@ -128,6 +128,15 @@ export default function PersonalScreen() {
               <View style={styles.goalText}>
                 <Text style={styles.goalTitle}>{item.title}</Text>
                 <Text style={styles.goalMeta}>Deadline {item.deadline_time}</Text>
+                {item.today_check_in ? (
+                  <Text style={styles.statusBadge}>
+                    {item.today_check_in.status === 'done'
+                      ? 'Done today'
+                      : item.today_check_in.status === 'skipped'
+                        ? 'Skipped today'
+                        : 'Missed today'}
+                  </Text>
+                ) : null}
               </View>
               <Pressable
                 onPress={() =>
@@ -137,7 +146,9 @@ export default function PersonalScreen() {
                   })
                 }
                 style={styles.checkInButton}>
-                <Text style={styles.checkInButtonText}>Check in</Text>
+                <Text style={styles.checkInButtonText}>
+                  {item.today_check_in ? 'Update' : 'Check in'}
+                </Text>
               </Pressable>
             </View>
           )}
@@ -216,5 +227,11 @@ const styles = StyleSheet.create({
     color: '#111827',
     fontSize: 34,
     fontWeight: '800',
+  },
+  statusBadge: {
+    color: '#0F766E',
+    fontSize: 13,
+    fontWeight: '800',
+    textTransform: 'uppercase',
   },
 });

@@ -48,6 +48,7 @@ describe('HomeScreen', () => {
           id: 'goal-1',
           owner_user_id: 'user-1',
           status: 'active',
+          today_check_in: { id: 'check-in-1', local_date: '2026-05-26', status: 'done' },
           timezone: 'Asia/Kolkata',
           title: 'Read for 20 minutes',
         },
@@ -57,6 +58,7 @@ describe('HomeScreen', () => {
     render(<HomeScreen />);
 
     await screen.findByText('Read for 20 minutes');
+    expect(screen.getByText('Done today')).toBeTruthy();
     expect(screen.getByText('Morning crew')).toBeTruthy();
 
     fireEvent.press(screen.getByText('Read for 20 minutes'));

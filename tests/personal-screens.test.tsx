@@ -71,12 +71,14 @@ describe('personal tracker screens', () => {
         title: 'Read 20 pages',
         deadline_time: '21:30',
         timezone: 'Asia/Kolkata',
+        today_check_in: { id: 'check-in-1', local_date: '2026-05-26', status: 'done' },
       },
     ]);
     const screen = render(<PersonalScreen />);
 
     expect(await screen.findByText('Read 20 pages')).toBeTruthy();
-    fireEvent.press(screen.getByText('Check in'));
+    expect(screen.getByText('Done today')).toBeTruthy();
+    fireEvent.press(screen.getByText('Update'));
 
     expect(mockPush).toHaveBeenCalledWith({
       params: { goalId: 'goal-1', timezone: 'Asia/Kolkata' },
