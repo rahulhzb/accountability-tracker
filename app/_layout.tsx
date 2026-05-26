@@ -28,7 +28,7 @@ function RootStack() {
   }
 
   return (
-    <Stack>
+    <Stack screenOptions={{ headerBackButtonDisplayMode: 'minimal' }}>
       <Stack.Screen name="(auth)/sign-in" options={{ headerShown: false }} />
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="challenges/[challengeId]" options={{ title: 'Challenge' }} />
