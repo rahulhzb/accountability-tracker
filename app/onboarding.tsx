@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Alert, StyleSheet, Text, View } from 'react-native';
 
 import { AppButton, AppCard, AppInput, AppScreen, Eyebrow } from '@/components/app-ui';
@@ -12,9 +12,15 @@ function deviceTimeZone() {
 }
 
 export default function OnboardingScreen() {
-  const { refreshProfile, session } = useAuth();
+  const { profile, refreshProfile, session } = useAuth();
   const [displayName, setDisplayName] = useState('');
   const [savingDestination, setSavingDestination] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (profile && !savingDestination) {
+      router.replace('/(tabs)');
+    }
+  }, [profile, savingDestination]);
 
   async function completeOnboarding(destination: string) {
     if (!session?.user.id) {

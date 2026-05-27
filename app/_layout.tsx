@@ -32,10 +32,6 @@ function RootStack() {
     return <Redirect href="/onboarding" />;
   }
 
-  if (session && profile && isOnboarding) {
-    return <Redirect href="/(tabs)" />;
-  }
-
   return (
     <Stack screenOptions={{ headerBackButtonDisplayMode: 'minimal' }}>
       <Stack.Screen name="(auth)/sign-in" options={{ headerShown: false }} />

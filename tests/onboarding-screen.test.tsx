@@ -27,6 +27,7 @@ describe('OnboardingScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     (useAuth as jest.Mock).mockReturnValue({
+      profile: null,
       refreshProfile: jest.fn().mockResolvedValue(undefined),
       session: { user: { id: 'user-1' } },
     });
@@ -76,5 +77,17 @@ describe('OnboardingScreen', () => {
 
     expect(Alert.alert).toHaveBeenCalledWith('Name required', 'Add the name your friends will see.');
     expect(updateProfile).not.toHaveBeenCalled();
+  });
+
+  it('routes already onboarded users away from onboarding', async () => {
+    (useAuth as jest.Mock).mockReturnValue({
+      profile: { display_name: 'Rahul', id: 'user-1', timezone: 'Asia/Kolkata' },
+      refreshProfile: jest.fn().mockResolvedValue(undefined),
+      session: { user: { id: 'user-1' } },
+    });
+
+    render(<OnboardingScreen />);
+
+    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/(tabs)'));
   });
 });
