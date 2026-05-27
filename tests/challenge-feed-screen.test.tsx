@@ -191,4 +191,12 @@ describe('challenge feed screen', () => {
       Share.share = originalShare;
     }
   });
+
+  it('makes the full challenge detail content scrollable', async () => {
+    (listFeedEvents as jest.Mock).mockResolvedValue([]);
+    const screen = render(<ChallengeDetailScreen />);
+
+    expect(await screen.findByText('Your goals in this challenge')).toBeTruthy();
+    expect(screen.getByTestId('challenge-detail-scroll')).toBeTruthy();
+  });
 });

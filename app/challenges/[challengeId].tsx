@@ -3,7 +3,7 @@ import { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  FlatList,
+  ScrollView,
   Share,
   StyleSheet,
   Text,
@@ -168,127 +168,129 @@ export default function ChallengeDetailScreen() {
   );
 
   return (
-    <AppScreen style={styles.container}>
-      <Eyebrow>Challenge</Eyebrow>
-      <Text style={styles.title}>Feed</Text>
-      <Text style={styles.subtitle}>A shared record of commitments, misses, and encouragement.</Text>
+    <AppScreen>
+      <ScrollView
+        contentContainerStyle={styles.container}
+        keyboardShouldPersistTaps="handled"
+        testID="challenge-detail-scroll">
+        <Eyebrow>Challenge</Eyebrow>
+        <Text style={styles.title}>Feed</Text>
+        <Text style={styles.subtitle}>A shared record of commitments, misses, and encouragement.</Text>
 
-      <AppCard style={styles.goalCard}>
-        <Text style={styles.goalCardTitle}>Add a group goal</Text>
-        <AppInput
-          onChangeText={setGoalTitle}
-          placeholder="Daily group commitment"
-          value={goalTitle}
-        />
-        <AppInput
-          keyboardType="numbers-and-punctuation"
-          onChangeText={setDeadlineTime}
-          placeholder="Deadline HH:mm"
-          value={deadlineTime}
-        />
-        <AppButton
-          disabled={creatingGoal}
-          onPress={() => void addChallengeGoal()}
-          title={creatingGoal ? 'Adding...' : 'Add group goal'}
-        />
-      </AppCard>
-
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Members</Text>
-          <AppButton
-            onPress={() => void shareInvite()}
-            title="Invite friends"
-            variant="secondary"
+        <AppCard style={styles.goalCard}>
+          <Text style={styles.goalCardTitle}>Add a group goal</Text>
+          <AppInput
+            onChangeText={setGoalTitle}
+            placeholder="Daily group commitment"
+            value={goalTitle}
           />
+          <AppInput
+            keyboardType="numbers-and-punctuation"
+            onChangeText={setDeadlineTime}
+            placeholder="Deadline HH:mm"
+            value={deadlineTime}
+          />
+          <AppButton
+            disabled={creatingGoal}
+            onPress={() => void addChallengeGoal()}
+            title={creatingGoal ? 'Adding...' : 'Add group goal'}
+          />
+        </AppCard>
+
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Members</Text>
+            <AppButton
+              onPress={() => void shareInvite()}
+              title="Invite friends"
+              variant="secondary"
+            />
+          </View>
+          {challenge ? (
+            <Text style={styles.inviteCode}>Invite code {challenge.invite_code}</Text>
+          ) : null}
+          {members.length === 1 ? (
+            <Text style={styles.empty}>Waiting for friends</Text>
+          ) : null}
+          {members.map((member) => (
+            <AppCard key={member.userId} style={styles.memberRow}>
+              <View style={styles.memberAvatar}>
+                <Text style={styles.memberInitial}>{member.displayName.slice(0, 1).toUpperCase()}</Text>
+              </View>
+              <View style={styles.memberText}>
+                <Text style={styles.memberName}>{member.displayName}</Text>
+                <Text style={styles.eventMeta}>{member.timezone}</Text>
+              </View>
+              <View style={styles.rolePill}>
+                <Text style={styles.rolePillText}>{member.role === 'owner' ? 'Owner' : 'Member'}</Text>
+              </View>
+            </AppCard>
+          ))}
         </View>
-        {challenge ? (
-          <Text style={styles.inviteCode}>Invite code {challenge.invite_code}</Text>
-        ) : null}
-        {members.length === 1 ? (
-          <Text style={styles.empty}>Waiting for friends</Text>
-        ) : null}
-        {members.map((member) => (
-          <AppCard key={member.userId} style={styles.memberRow}>
-            <View style={styles.memberAvatar}>
-              <Text style={styles.memberInitial}>{member.displayName.slice(0, 1).toUpperCase()}</Text>
-            </View>
-            <View style={styles.memberText}>
-              <Text style={styles.memberName}>{member.displayName}</Text>
-              <Text style={styles.eventMeta}>{member.timezone}</Text>
-            </View>
-            <View style={styles.rolePill}>
-              <Text style={styles.rolePillText}>{member.role === 'owner' ? 'Owner' : 'Member'}</Text>
-            </View>
-          </AppCard>
-        ))}
-      </View>
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Your goals in this challenge</Text>
-        {goals.length === 0 ? (
-          <Text style={styles.empty}>No challenge goals yet.</Text>
-        ) : (
-          goals.map((goal) => (
-            <AppCard key={goal.id} style={styles.goalRow}>
-              <View style={styles.goalText}>
-                <Text style={styles.goalTitle}>{goal.title}</Text>
-                <Text style={styles.eventMeta}>Deadline {goal.deadline_time}</Text>
-                <StatusPill status={goal.today_check_in?.status ?? 'pending'} />
-              </View>
-              <AppButton
-                onPress={() =>
-                  router.push({
-                    params: { goalId: goal.id, timezone: goal.timezone },
-                    pathname: '/check-ins/[goalId]',
-                  })
-                }
-                title={goal.today_check_in ? 'Update' : 'Check in'}
-              />
-            </AppCard>
-          ))
-        )}
-      </View>
-
-      {loading ? (
-        <ActivityIndicator color={design.color.teal} />
-      ) : (
-        <FlatList
-          contentContainerStyle={styles.feedList}
-          data={events}
-          keyExtractor={(item) => item.id}
-          ListEmptyComponent={<Text style={styles.empty}>No check-ins yet.</Text>}
-          renderItem={({ item }) => (
-            <AppCard style={styles.eventCard}>
-              <View style={styles.eventHeader}>
-                <Text style={styles.eventLabel}>{labelByEventType[item.event_type]}</Text>
-                <Text style={styles.eventMeta}>{item.check_ins?.local_date ?? 'Today'}</Text>
-              </View>
-              {item.check_ins?.note ? (
-                <Text style={styles.note}>{item.check_ins.note}</Text>
-              ) : null}
-              {item.comments?.map((comment) => (
-                <Text key={comment.id} style={styles.comment}>
-                  {comment.body}
-                </Text>
-              ))}
-              <AppInput
-                onChangeText={(text) =>
-                  setCommentByEventId((current) => ({ ...current, [item.id]: text }))
-                }
-                placeholder="Write a response"
-                value={commentByEventId[item.id] ?? ''}
-              />
-              <AppButton
-                disabled={commentingEventId === item.id}
-                onPress={() => void submitComment(item.id)}
-                title={commentingEventId === item.id ? 'Posting...' : 'Comment'}
-                variant="secondary"
-              />
-            </AppCard>
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Your goals in this challenge</Text>
+          {goals.length === 0 ? (
+            <Text style={styles.empty}>No challenge goals yet.</Text>
+          ) : (
+            goals.map((goal) => (
+              <AppCard key={goal.id} style={styles.goalRow}>
+                <View style={styles.goalText}>
+                  <Text style={styles.goalTitle}>{goal.title}</Text>
+                  <Text style={styles.eventMeta}>Deadline {goal.deadline_time}</Text>
+                  <StatusPill status={goal.today_check_in?.status ?? 'pending'} />
+                </View>
+                <AppButton
+                  onPress={() =>
+                    router.push({
+                      params: { goalId: goal.id, timezone: goal.timezone },
+                      pathname: '/check-ins/[goalId]',
+                    })
+                  }
+                  title={goal.today_check_in ? 'Update' : 'Check in'}
+                />
+              </AppCard>
+            ))
           )}
-        />
-      )}
+        </View>
+
+        {loading ? (
+          <ActivityIndicator color={design.color.teal} />
+        ) : (
+          <View style={styles.feedList}>
+            {events.length === 0 ? <Text style={styles.empty}>No check-ins yet.</Text> : null}
+            {events.map((item) => (
+              <AppCard key={item.id} style={styles.eventCard}>
+                <View style={styles.eventHeader}>
+                  <Text style={styles.eventLabel}>{labelByEventType[item.event_type]}</Text>
+                  <Text style={styles.eventMeta}>{item.check_ins?.local_date ?? 'Today'}</Text>
+                </View>
+                {item.check_ins?.note ? (
+                  <Text style={styles.note}>{item.check_ins.note}</Text>
+                ) : null}
+                {item.comments?.map((comment) => (
+                  <Text key={comment.id} style={styles.comment}>
+                    {comment.body}
+                  </Text>
+                ))}
+                <AppInput
+                  onChangeText={(text) =>
+                    setCommentByEventId((current) => ({ ...current, [item.id]: text }))
+                  }
+                  placeholder="Write a response"
+                  value={commentByEventId[item.id] ?? ''}
+                />
+                <AppButton
+                  disabled={commentingEventId === item.id}
+                  onPress={() => void submitComment(item.id)}
+                  title={commentingEventId === item.id ? 'Posting...' : 'Comment'}
+                  variant="secondary"
+                />
+              </AppCard>
+            ))}
+          </View>
+        )}
+      </ScrollView>
     </AppScreen>
   );
 }
@@ -304,6 +306,7 @@ const styles = StyleSheet.create({
     gap: 14,
     padding: 20,
     paddingTop: 66,
+    paddingBottom: 48,
   },
   empty: {
     color: design.color.muted,
