@@ -172,6 +172,8 @@ export default function ChallengeDetailScreen() {
       <ScrollView
         contentContainerStyle={styles.container}
         keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator
+        style={styles.scroll}
         testID="challenge-detail-scroll">
         <Eyebrow>Challenge</Eyebrow>
         <Text style={styles.title}>Feed</Text>
@@ -410,6 +412,9 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     letterSpacing: 0.4,
     textTransform: 'uppercase',
+  },
+  scroll: {
+    flex: 1,
   },
   section: {
     gap: 8,

@@ -197,6 +197,7 @@ describe('challenge feed screen', () => {
     const screen = render(<ChallengeDetailScreen />);
 
     expect(await screen.findByText('Your goals in this challenge')).toBeTruthy();
-    expect(screen.getByTestId('challenge-detail-scroll')).toBeTruthy();
+    expect(screen.getByTestId('challenge-detail-scroll')).toHaveStyle({ flex: 1 });
+    expect(screen.getByTestId('challenge-detail-scroll').props.showsVerticalScrollIndicator).toBe(true);
   });
 });
