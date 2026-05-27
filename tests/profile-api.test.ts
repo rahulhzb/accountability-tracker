@@ -36,7 +36,7 @@ describe('profile api', () => {
     expect(single).toHaveBeenCalled();
   });
 
-  it('updates profile display name and timezone', async () => {
+  it('saves profile display name and timezone with upsert', async () => {
     const profile = {
       display_name: 'Rahul',
       id: 'user-1',
@@ -45,9 +45,8 @@ describe('profile api', () => {
     };
     const single = jest.fn().mockResolvedValue({ data: profile, error: null });
     const select = jest.fn(() => ({ single }));
-    const eq = jest.fn(() => ({ select }));
-    const update = jest.fn(() => ({ eq }));
-    mockFrom.mockReturnValue({ update });
+    const upsert = jest.fn(() => ({ select }));
+    mockFrom.mockReturnValue({ upsert });
 
     await expect(
       updateProfile({
@@ -57,11 +56,13 @@ describe('profile api', () => {
       }),
     ).resolves.toBe(profile);
 
-    expect(update).toHaveBeenCalledWith({
+    expect(upsert).toHaveBeenCalledWith({
       display_name: 'Rahul',
+      id: 'user-1',
       timezone: 'Asia/Kolkata',
+    }, {
+      onConflict: 'id',
     });
-    expect(eq).toHaveBeenCalledWith('id', 'user-1');
     expect(select).toHaveBeenCalledWith(
       'id, display_name, timezone, notification_preferences, created_at',
     );

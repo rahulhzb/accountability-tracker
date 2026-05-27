@@ -43,11 +43,13 @@ export async function updateProfile(input: {
 
   const { data, error } = await supabase
     .from('profiles')
-    .update({
+    .upsert({
       display_name: displayName,
+      id: input.userId,
       timezone: input.timezone,
+    }, {
+      onConflict: 'id',
     })
-    .eq('id', input.userId)
     .select(profileSelect)
     .single();
 

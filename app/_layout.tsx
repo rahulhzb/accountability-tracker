@@ -11,9 +11,10 @@ export const unstable_settings = {
 };
 
 function RootStack() {
-  const { loading, session } = useAuth();
+  const { loading, profile, session } = useAuth();
   const segments = useSegments();
   const isInAuthGroup = segments[0] === '(auth)';
+  const isOnboarding = segments[0] === 'onboarding';
 
   if (loading) {
     return null;
@@ -27,9 +28,18 @@ function RootStack() {
     return <Redirect href="/(tabs)" />;
   }
 
+  if (session && !profile && !isOnboarding) {
+    return <Redirect href="/onboarding" />;
+  }
+
+  if (session && profile && isOnboarding) {
+    return <Redirect href="/(tabs)" />;
+  }
+
   return (
     <Stack screenOptions={{ headerBackButtonDisplayMode: 'minimal' }}>
       <Stack.Screen name="(auth)/sign-in" options={{ headerShown: false }} />
+      <Stack.Screen name="onboarding" options={{ headerShown: false }} />
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="challenges/[challengeId]" options={{ title: 'Challenge' }} />
       <Stack.Screen name="challenges/new" options={{ title: 'New Challenge' }} />
