@@ -161,10 +161,10 @@ Likely modified files:
 - Create: `src/features/members/api.ts`
 - Test: `tests/members-api.test.ts`
 
-- [ ] Add `listChallengeMembers(challengeId)`.
-- [ ] Return member user id, role, joined date, and profile display name/timezone.
-- [ ] Test query shape and error handling.
-- [ ] Commit: `feat: add challenge members api`
+- [x] Add `listChallengeMembers(challengeId)`.
+- [x] Return member user id, role, joined date, and profile display name/timezone.
+- [x] Test query shape and error handling.
+- [x] Commit: `feat: add challenge members api`
 
 ### Task 2.2: Member List On Challenge Detail
 
@@ -562,4 +562,3 @@ Use subagent-driven implementation for this plan because tasks are mostly indepe
 7. QA/security reviewer.
 
 Keep commits small. Run focused tests after every task and full gates after every phase.
-
