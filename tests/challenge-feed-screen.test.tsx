@@ -4,6 +4,7 @@ import ChallengeDetailScreen from '../app/challenges/[challengeId]';
 import { useAuth } from '../src/features/auth/auth-context';
 import { createComment, listFeedEvents } from '../src/features/feed/api';
 import { createGoal, listActiveGoals } from '../src/features/goals/api';
+import { listChallengeMembers } from '../src/features/members/api';
 
 const mockPush = jest.fn();
 jest.mock('expo-router', () => ({
@@ -32,11 +33,24 @@ jest.mock('../src/features/goals/api', () => ({
   listActiveGoals: jest.fn(),
 }));
 
+jest.mock('../src/features/members/api', () => ({
+  listChallengeMembers: jest.fn(),
+}));
+
 describe('challenge feed screen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     (useAuth as jest.Mock).mockReturnValue({ session: { user: { id: 'user-1' } } });
     (listActiveGoals as jest.Mock).mockResolvedValue([]);
+    (listChallengeMembers as jest.Mock).mockResolvedValue([
+      {
+        displayName: 'Rahul',
+        joinedAt: '2026-05-20T09:00:00Z',
+        role: 'owner',
+        timezone: 'Asia/Kolkata',
+        userId: 'user-1',
+      },
+    ]);
   });
 
   it('renders feed events and creates comments', async () => {
@@ -112,5 +126,17 @@ describe('challenge feed screen', () => {
       params: { goalId: 'goal-1', timezone: 'Asia/Kolkata' },
       pathname: '/check-ins/[goalId]',
     });
+  });
+
+  it('shows challenge members and invites when the group is still solo', async () => {
+    (listFeedEvents as jest.Mock).mockResolvedValue([]);
+    const screen = render(<ChallengeDetailScreen />);
+
+    expect(await screen.findByText('Members')).toBeTruthy();
+    expect(screen.getByText('Rahul')).toBeTruthy();
+    expect(screen.getByText('Owner')).toBeTruthy();
+    expect(screen.getByText('Waiting for friends')).toBeTruthy();
+    expect(screen.getByText('Invite friends')).toBeTruthy();
+    expect(listChallengeMembers).toHaveBeenCalledWith('challenge-1');
   });
 });

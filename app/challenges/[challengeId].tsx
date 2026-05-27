@@ -14,6 +14,7 @@ import { design } from '@/src/design/theme';
 import { useAuth } from '@/src/features/auth/auth-context';
 import { createComment, FeedEvent, listFeedEvents } from '@/src/features/feed/api';
 import { createGoal, Goal, listActiveGoals } from '@/src/features/goals/api';
+import { ChallengeMember, listChallengeMembers } from '@/src/features/members/api';
 
 const labelByEventType = {
   check_in_done: 'Completed',
@@ -27,6 +28,7 @@ export default function ChallengeDetailScreen() {
   const { session } = useAuth();
   const [events, setEvents] = useState<FeedEvent[]>([]);
   const [goals, setGoals] = useState<Goal[]>([]);
+  const [members, setMembers] = useState<ChallengeMember[]>([]);
   const [commentByEventId, setCommentByEventId] = useState<Record<string, string>>({});
   const [goalTitle, setGoalTitle] = useState('');
   const [deadlineTime, setDeadlineTime] = useState('21:00');
@@ -43,8 +45,9 @@ export default function ChallengeDetailScreen() {
     setLoading(true);
 
     try {
-      const [nextEvents, nextGoals] = await Promise.all([
+      const [nextEvents, nextMembers, nextGoals] = await Promise.all([
         listFeedEvents(challengeId),
+        listChallengeMembers(challengeId),
         session?.user.id
           ? listActiveGoals(session.user.id, { challengeId, type: 'challenge' })
           : Promise.resolve([]),
@@ -52,6 +55,7 @@ export default function ChallengeDetailScreen() {
 
       if (shouldApply()) {
         setEvents(nextEvents);
+        setMembers(nextMembers);
         setGoals(nextGoals);
       }
     } catch (error) {
@@ -160,6 +164,36 @@ export default function ChallengeDetailScreen() {
           title={creatingGoal ? 'Adding...' : 'Add group goal'}
         />
       </AppCard>
+
+      <View style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Members</Text>
+          <AppButton
+            onPress={() =>
+              Alert.alert('Invite friends', 'The shareable invite surface is the next build slice.')
+            }
+            title="Invite friends"
+            variant="secondary"
+          />
+        </View>
+        {members.length === 1 ? (
+          <Text style={styles.empty}>Waiting for friends</Text>
+        ) : null}
+        {members.map((member) => (
+          <AppCard key={member.userId} style={styles.memberRow}>
+            <View style={styles.memberAvatar}>
+              <Text style={styles.memberInitial}>{member.displayName.slice(0, 1).toUpperCase()}</Text>
+            </View>
+            <View style={styles.memberText}>
+              <Text style={styles.memberName}>{member.displayName}</Text>
+              <Text style={styles.eventMeta}>{member.timezone}</Text>
+            </View>
+            <View style={styles.rolePill}>
+              <Text style={styles.rolePillText}>{member.role === 'owner' ? 'Owner' : 'Member'}</Text>
+            </View>
+          </AppCard>
+        ))}
+      </View>
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Your goals in this challenge</Text>
@@ -293,13 +327,59 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '900',
   },
+  memberAvatar: {
+    alignItems: 'center',
+    backgroundColor: design.color.teal,
+    borderRadius: 18,
+    height: 36,
+    justifyContent: 'center',
+    width: 36,
+  },
+  memberInitial: {
+    color: design.color.card,
+    fontSize: 16,
+    fontWeight: '900',
+  },
+  memberName: {
+    color: design.color.ink,
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  memberRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 12,
+    padding: 14,
+  },
+  memberText: {
+    flex: 1,
+    gap: 3,
+  },
   note: {
     color: design.color.inkSoft,
     fontSize: 16,
     lineHeight: 22,
   },
+  rolePill: {
+    backgroundColor: design.color.wash,
+    borderRadius: design.radius.full,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  rolePillText: {
+    color: design.color.teal,
+    fontSize: 12,
+    fontWeight: '900',
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
+  },
   section: {
     gap: 8,
+  },
+  sectionHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
   },
   sectionTitle: {
     color: design.color.ink,

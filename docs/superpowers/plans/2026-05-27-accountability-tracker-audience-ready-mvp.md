@@ -172,11 +172,11 @@ Likely modified files:
 - Modify: `app/challenges/[challengeId].tsx`
 - Test: `tests/challenge-feed-screen.test.tsx`
 
-- [ ] Show members section with owner/member labels.
-- [ ] Show “Waiting for friends” when only one member exists.
-- [ ] Add “Invite friends” CTA near member section.
-- [ ] Preserve existing feed/comment tests.
-- [ ] Commit: `feat: show challenge members`
+- [x] Show members section with owner/member labels.
+- [x] Show “Waiting for friends” when only one member exists.
+- [x] Add “Invite friends” CTA near member section.
+- [x] Preserve existing feed/comment tests.
+- [x] Commit: `feat: show challenge members`
 
 ### Task 2.3: Invite Share Surface
 
