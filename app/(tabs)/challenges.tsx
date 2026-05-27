@@ -112,9 +112,12 @@ export default function ChallengesScreen() {
           data={challenges}
           keyExtractor={(item) => item.id}
           ListEmptyComponent={
-            <Pressable onPress={() => void loadChallenges()}>
-              <Text style={styles.empty}>No challenges yet. Create one.</Text>
-            </Pressable>
+            <AppCard style={styles.emptyCard}>
+              <Text style={styles.emptyTitle}>Create your first group</Text>
+              <Text style={styles.empty}>
+                Invite friends and make the first daily commitment visible.
+              </Text>
+            </AppCard>
           }
           renderItem={({ item }) => (
             <Pressable
@@ -157,7 +160,16 @@ const styles = StyleSheet.create({
   },
   empty: {
     color: design.color.muted,
-    paddingVertical: 24,
+    lineHeight: 20,
+  },
+  emptyCard: {
+    gap: 8,
+    padding: 18,
+  },
+  emptyTitle: {
+    color: design.color.ink,
+    fontSize: 18,
+    fontWeight: '900',
   },
   header: {
     alignItems: 'flex-start',

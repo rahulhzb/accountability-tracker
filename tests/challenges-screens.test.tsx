@@ -73,4 +73,12 @@ describe('challenge screens', () => {
     await waitFor(() => expect(joinChallengeByInvite).toHaveBeenCalledWith(' abc12345 '));
     expect(mockPush).toHaveBeenCalledWith('/challenges/challenge-2');
   });
+
+  it('guides users to create a challenge when the list is empty', async () => {
+    (listMyChallenges as jest.Mock).mockResolvedValue([]);
+    const screen = render(<ChallengesScreen />);
+
+    expect(await screen.findByText('Create your first group')).toBeTruthy();
+    expect(screen.getByText('Invite friends and make the first daily commitment visible.')).toBeTruthy();
+  });
 });

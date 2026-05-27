@@ -71,16 +71,22 @@ describe('HomeScreen', () => {
     expect(mockPush).toHaveBeenCalledWith('/challenges/challenge-1');
   });
 
-  it('shows empty states when the user has no goals or challenges', async () => {
+  it('shows guided empty states when the user has no goals or challenges', async () => {
     jest.mocked(loadHome).mockResolvedValue({ challenges: [], goals: [] });
 
     render(<HomeScreen />);
 
     await waitFor(() => {
-      expect(screen.getByText('No goals yet. Add one from Personal.')).toBeTruthy();
-      expect(
-        screen.getByText('No challenge groups yet. Create or join one from Challenges.'),
-      ).toBeTruthy();
+      expect(screen.getByText('Start with friends')).toBeTruthy();
+      expect(screen.getByText('Create or join a private challenge to make today visible.')).toBeTruthy();
+      expect(screen.getByText('Create challenge')).toBeTruthy();
+      expect(screen.getByText('Join a challenge')).toBeTruthy();
     });
+
+    fireEvent.press(screen.getByText('Create challenge'));
+    expect(mockPush).toHaveBeenCalledWith('/challenges/new');
+
+    fireEvent.press(screen.getByText('Join a challenge'));
+    expect(mockPush).toHaveBeenCalledWith('/(tabs)/challenges');
   });
 });

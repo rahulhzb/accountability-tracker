@@ -122,7 +122,14 @@ export default function PersonalScreen() {
           contentContainerStyle={styles.list}
           data={goals}
           keyExtractor={(item) => item.id}
-          ListEmptyComponent={<Text style={styles.empty}>No active goals yet.</Text>}
+          ListEmptyComponent={
+            <AppCard style={styles.emptyCard}>
+              <Text style={styles.emptyTitle}>Your private backup loop</Text>
+              <Text style={styles.empty}>
+                Track a commitment here when it does not belong in a friend challenge.
+              </Text>
+            </AppCard>
+          }
           renderItem={({ item }) => (
             <AppCard style={styles.goalRow}>
               <View style={styles.goalText}>
@@ -164,7 +171,16 @@ const styles = StyleSheet.create({
   },
   empty: {
     color: design.color.muted,
-    paddingVertical: 24,
+    lineHeight: 20,
+  },
+  emptyCard: {
+    gap: 8,
+    padding: 18,
+  },
+  emptyTitle: {
+    color: design.color.ink,
+    fontSize: 18,
+    fontWeight: '900',
   },
   goalMeta: {
     color: design.color.muted,

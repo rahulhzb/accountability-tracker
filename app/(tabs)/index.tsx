@@ -163,13 +163,41 @@ export default function HomeScreen() {
               );
             }
 
-            return (
-              <Text style={styles.empty}>
-                {item.type === 'empty-goals'
-                  ? 'No goals yet. Add one from Personal.'
-                  : 'No challenge groups yet. Create or join one from Challenges.'}
-              </Text>
-            );
+            if (item.type === 'empty-goals') {
+              return (
+                <AppCard style={styles.emptyCard}>
+                  <Text style={styles.emptyTitle}>Start with friends</Text>
+                  <Text style={styles.empty}>
+                    Create or join a private challenge to make today visible.
+                  </Text>
+                  <View style={styles.emptyActions}>
+                    <Pressable onPress={() => router.push('/challenges/new')} style={styles.emptyButton}>
+                      <Text style={styles.emptyButtonText}>Create challenge</Text>
+                    </Pressable>
+                    <Pressable
+                      onPress={() => router.push('/(tabs)/challenges')}
+                      style={[styles.emptyButton, styles.emptyButtonSecondary]}>
+                      <Text style={[styles.emptyButtonText, styles.emptyButtonTextSecondary]}>
+                        Join a challenge
+                      </Text>
+                    </Pressable>
+                  </View>
+                </AppCard>
+              );
+            }
+
+            if (item.type === 'empty-challenges') {
+              return (
+                <AppCard style={styles.emptyCard}>
+                  <Text style={styles.emptyTitle}>No groups yet</Text>
+                  <Text style={styles.empty}>
+                    Friend groups are where accountability gets real. Invite one person to start.
+                  </Text>
+                </AppCard>
+              );
+            }
+
+            return null;
           }}
         />
       )}
@@ -209,7 +237,37 @@ const styles = StyleSheet.create({
   empty: {
     color: design.color.muted,
     lineHeight: 20,
-    marginBottom: 18,
+  },
+  emptyActions: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 4,
+  },
+  emptyButton: {
+    backgroundColor: design.color.primary,
+    borderRadius: design.radius.full,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  emptyButtonSecondary: {
+    backgroundColor: design.color.wash,
+  },
+  emptyButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '800',
+  },
+  emptyButtonTextSecondary: {
+    color: design.color.primary,
+  },
+  emptyCard: {
+    gap: 8,
+    marginBottom: 12,
+    padding: 18,
+  },
+  emptyTitle: {
+    color: design.color.ink,
+    fontSize: 18,
+    fontWeight: '900',
   },
   hero: {
     backgroundColor: design.color.primary,

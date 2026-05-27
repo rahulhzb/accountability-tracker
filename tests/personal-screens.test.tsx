@@ -66,6 +66,14 @@ describe('personal tracker screens', () => {
     expect(listActiveGoals).toHaveBeenCalledWith('user-1', { type: 'personal' });
   });
 
+  it('explains personal tracking as a private fallback when empty', async () => {
+    (listActiveGoals as jest.Mock).mockResolvedValue([]);
+    const screen = render(<PersonalScreen />);
+
+    expect(await screen.findByText('Your private backup loop')).toBeTruthy();
+    expect(screen.getByText('Track a commitment here when it does not belong in a friend challenge.')).toBeTruthy();
+  });
+
   it('opens a goal check-in screen from the personal tracker', async () => {
     (listActiveGoals as jest.Mock).mockResolvedValue([
       {
