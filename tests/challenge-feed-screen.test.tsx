@@ -1,7 +1,9 @@
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
+import { Alert, Share } from 'react-native';
 
 import ChallengeDetailScreen from '../app/challenges/[challengeId]';
 import { useAuth } from '../src/features/auth/auth-context';
+import { getChallenge } from '../src/features/challenges/api';
 import { createComment, listFeedEvents } from '../src/features/feed/api';
 import { createGoal, listActiveGoals } from '../src/features/goals/api';
 import { listChallengeMembers } from '../src/features/members/api';
@@ -23,6 +25,10 @@ jest.mock('../src/features/auth/auth-context', () => ({
   useAuth: jest.fn(),
 }));
 
+jest.mock('../src/features/challenges/api', () => ({
+  getChallenge: jest.fn(),
+}));
+
 jest.mock('../src/features/feed/api', () => ({
   createComment: jest.fn(),
   listFeedEvents: jest.fn(),
@@ -40,6 +46,17 @@ jest.mock('../src/features/members/api', () => ({
 describe('challenge feed screen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    jest.spyOn(Share, 'share').mockResolvedValue({ action: Share.sharedAction });
+    (getChallenge as jest.Mock).mockResolvedValue({
+      created_by: 'user-1',
+      description: 'Daily movement',
+      end_date: null,
+      id: 'challenge-1',
+      invite_code: 'ABC12345',
+      name: 'Morning Fitness',
+      start_date: '2026-05-19',
+    });
     (useAuth as jest.Mock).mockReturnValue({ session: { user: { id: 'user-1' } } });
     (listActiveGoals as jest.Mock).mockResolvedValue([]);
     (listChallengeMembers as jest.Mock).mockResolvedValue([
@@ -138,5 +155,40 @@ describe('challenge feed screen', () => {
     expect(screen.getByText('Waiting for friends')).toBeTruthy();
     expect(screen.getByText('Invite friends')).toBeTruthy();
     expect(listChallengeMembers).toHaveBeenCalledWith('challenge-1');
+  });
+
+  it('shares the challenge invite code from the member section', async () => {
+    (listFeedEvents as jest.Mock).mockResolvedValue([]);
+    const screen = render(<ChallengeDetailScreen />);
+
+    expect(await screen.findByText('Invite code ABC12345')).toBeTruthy();
+    fireEvent.press(screen.getByText('Invite friends'));
+
+    await waitFor(() =>
+      expect(Share.share).toHaveBeenCalledWith({
+        message: 'Join my Morning Fitness accountability challenge with invite code ABC12345.',
+        title: 'Join Morning Fitness',
+      }),
+    );
+  });
+
+  it('shows fallback invite text when native share is unavailable', async () => {
+    const originalShare = Share.share;
+    (Share as unknown as { share?: typeof Share.share }).share = undefined;
+    (listFeedEvents as jest.Mock).mockResolvedValue([]);
+
+    try {
+      const screen = render(<ChallengeDetailScreen />);
+
+      expect(await screen.findByText('Invite code ABC12345')).toBeTruthy();
+      fireEvent.press(screen.getByText('Invite friends'));
+
+      expect(Alert.alert).toHaveBeenCalledWith(
+        'Invite code',
+        'Join my Morning Fitness accountability challenge with invite code ABC12345.',
+      );
+    } finally {
+      Share.share = originalShare;
+    }
   });
 });

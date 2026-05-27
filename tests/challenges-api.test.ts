@@ -1,5 +1,6 @@
 import {
   createChallenge,
+  getChallenge,
   joinChallengeByInvite,
   listMyChallenges,
 } from '../src/features/challenges/api';
@@ -59,6 +60,30 @@ describe('challenge api', () => {
     expect(mockFrom).toHaveBeenCalledWith('challenges');
     expect(select).toHaveBeenCalledWith('*');
     expect(order).toHaveBeenCalledWith('created_at', { ascending: false });
+  });
+
+  it('loads one challenge by id for invite sharing', async () => {
+    const challenge = {
+      id: 'challenge-1',
+      name: 'Morning Fitness',
+      description: '',
+      invite_code: 'ABC12345',
+      start_date: '2026-05-19',
+      end_date: null,
+      created_by: 'user-1',
+    };
+    const single = jest.fn().mockResolvedValue({ data: challenge, error: null });
+    const eq = jest.fn(() => ({ single }));
+    const select = jest.fn(() => ({ eq }));
+
+    mockFrom.mockReturnValue({ select });
+
+    await expect(getChallenge('challenge-1')).resolves.toBe(challenge);
+
+    expect(mockFrom).toHaveBeenCalledWith('challenges');
+    expect(select).toHaveBeenCalledWith('*');
+    expect(eq).toHaveBeenCalledWith('id', 'challenge-1');
+    expect(single).toHaveBeenCalled();
   });
 
   it('joins a challenge through the invite-code RPC', async () => {

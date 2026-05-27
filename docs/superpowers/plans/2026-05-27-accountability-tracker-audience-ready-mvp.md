@@ -186,11 +186,11 @@ Likely modified files:
 - Optional create: `app/challenges/[challengeId]/invite.tsx`
 - Test: `tests/challenges-screens.test.tsx`
 
-- [ ] Display invite code prominently.
-- [ ] Add copy/share action using React Native Share where available.
-- [ ] Add fallback copy text when native share is unavailable.
-- [ ] Test invite CTA is visible and invokes share helper.
-- [ ] Commit: `feat: add friend invite flow`
+- [x] Display invite code prominently.
+- [x] Add copy/share action using React Native Share where available.
+- [x] Add fallback copy text when native share is unavailable.
+- [x] Test invite CTA is visible and invokes share helper.
+- [x] Commit: `feat: add friend invite flow`
 
 ---
 

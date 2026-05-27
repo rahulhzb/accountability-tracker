@@ -4,6 +4,7 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
+  Share,
   StyleSheet,
   Text,
   View,
@@ -12,6 +13,7 @@ import {
 import { AppButton, AppCard, AppInput, AppScreen, Eyebrow, StatusPill } from '@/components/app-ui';
 import { design } from '@/src/design/theme';
 import { useAuth } from '@/src/features/auth/auth-context';
+import { Challenge, getChallenge } from '@/src/features/challenges/api';
 import { createComment, FeedEvent, listFeedEvents } from '@/src/features/feed/api';
 import { createGoal, Goal, listActiveGoals } from '@/src/features/goals/api';
 import { ChallengeMember, listChallengeMembers } from '@/src/features/members/api';
@@ -26,6 +28,7 @@ const labelByEventType = {
 export default function ChallengeDetailScreen() {
   const { challengeId } = useLocalSearchParams<{ challengeId: string }>();
   const { session } = useAuth();
+  const [challenge, setChallenge] = useState<Challenge | null>(null);
   const [events, setEvents] = useState<FeedEvent[]>([]);
   const [goals, setGoals] = useState<Goal[]>([]);
   const [members, setMembers] = useState<ChallengeMember[]>([]);
@@ -45,7 +48,8 @@ export default function ChallengeDetailScreen() {
     setLoading(true);
 
     try {
-      const [nextEvents, nextMembers, nextGoals] = await Promise.all([
+      const [nextChallenge, nextEvents, nextMembers, nextGoals] = await Promise.all([
+        getChallenge(challengeId),
         listFeedEvents(challengeId),
         listChallengeMembers(challengeId),
         session?.user.id
@@ -54,6 +58,7 @@ export default function ChallengeDetailScreen() {
       ]);
 
       if (shouldApply()) {
+        setChallenge(nextChallenge);
         setEvents(nextEvents);
         setMembers(nextMembers);
         setGoals(nextGoals);
@@ -69,6 +74,29 @@ export default function ChallengeDetailScreen() {
       if (shouldApply()) {
         setLoading(false);
       }
+    }
+  }
+
+  async function shareInvite() {
+    if (!challenge) {
+      Alert.alert('Invite unavailable', 'Challenge details are still loading.');
+      return;
+    }
+
+    const message = `Join my ${challenge.name} accountability challenge with invite code ${challenge.invite_code}.`;
+
+    if (typeof Share.share !== 'function') {
+      Alert.alert('Invite code', message);
+      return;
+    }
+
+    try {
+      await Share.share({
+        message,
+        title: `Join ${challenge.name}`,
+      });
+    } catch (error) {
+      Alert.alert('Could not share invite', error instanceof Error ? error.message : message);
     }
   }
 
@@ -169,13 +197,14 @@ export default function ChallengeDetailScreen() {
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Members</Text>
           <AppButton
-            onPress={() =>
-              Alert.alert('Invite friends', 'The shareable invite surface is the next build slice.')
-            }
+            onPress={() => void shareInvite()}
             title="Invite friends"
             variant="secondary"
           />
         </View>
+        {challenge ? (
+          <Text style={styles.inviteCode}>Invite code {challenge.invite_code}</Text>
+        ) : null}
         {members.length === 1 ? (
           <Text style={styles.empty}>Waiting for friends</Text>
         ) : null}
@@ -326,6 +355,12 @@ const styles = StyleSheet.create({
     color: design.color.ink,
     fontSize: 17,
     fontWeight: '900',
+  },
+  inviteCode: {
+    color: design.color.teal,
+    fontSize: 14,
+    fontWeight: '900',
+    letterSpacing: 0.5,
   },
   memberAvatar: {
     alignItems: 'center',

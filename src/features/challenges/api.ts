@@ -48,6 +48,20 @@ export async function listMyChallenges() {
   return data as Challenge[];
 }
 
+export async function getChallenge(challengeId: string) {
+  const { data, error } = await supabase
+    .from('challenges')
+    .select('*')
+    .eq('id', challengeId)
+    .single();
+
+  if (error) {
+    throw error;
+  }
+
+  return data as Challenge;
+}
+
 export async function joinChallengeByInvite(inviteCode: string) {
   const { data, error } = await supabase.rpc('join_challenge_by_invite_code', {
     target_invite_code: normalizeInviteCode(inviteCode),
