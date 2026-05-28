@@ -71,6 +71,29 @@ describe('HomeScreen', () => {
     expect(mockPush).toHaveBeenCalledWith('/challenges/challenge-1');
   });
 
+  it('keeps the Today screen scrollable above the tab bar', async () => {
+    jest.mocked(loadHome).mockResolvedValue({
+      challenges: [
+        {
+          created_by: 'user-1',
+          description: '',
+          end_date: null,
+          id: 'challenge-1',
+          invite_code: 'ABC12345',
+          name: 'Morning crew',
+          start_date: '2026-05-20',
+        },
+      ],
+      goals: [],
+    });
+
+    render(<HomeScreen />);
+
+    await screen.findByText('Morning crew');
+    expect(screen.getByTestId('today-scroll-list')).toHaveStyle({ flex: 1 });
+    expect(screen.getByTestId('today-scroll-list').props.showsVerticalScrollIndicator).toBe(true);
+  });
+
   it('shows guided empty states when the user has no goals or challenges', async () => {
     jest.mocked(loadHome).mockResolvedValue({ challenges: [], goals: [] });
 

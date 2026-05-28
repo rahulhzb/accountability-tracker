@@ -90,34 +90,41 @@ export default function HomeScreen() {
   const items = buildHomeItems(goals, challenges);
   const completedCount = goals.filter((goal) => goal.today_check_in?.status === 'done').length;
   const pendingCount = Math.max(goals.length - completedCount, 0);
+  const hero = (
+    <View style={styles.hero}>
+      <Eyebrow>Today</Eyebrow>
+      <Text style={styles.title}>Keep your word</Text>
+      <Text style={styles.subtitle}>A clear view of today's promises and the people counting with you.</Text>
+      <View style={styles.statsRow}>
+        <View style={styles.statBlock}>
+          <Text style={styles.statValue}>{completedCount}</Text>
+          <Text style={styles.statLabel}>done</Text>
+        </View>
+        <View style={styles.statDivider} />
+        <View style={styles.statBlock}>
+          <Text style={styles.statValue}>{pendingCount}</Text>
+          <Text style={styles.statLabel}>open</Text>
+        </View>
+      </View>
+    </View>
+  );
 
   return (
     <AppScreen style={styles.container}>
-      <View style={styles.hero}>
-        <Eyebrow>Today</Eyebrow>
-        <Text style={styles.title}>Keep your word</Text>
-        <Text style={styles.subtitle}>A clear view of today's promises and the people counting with you.</Text>
-        <View style={styles.statsRow}>
-          <View style={styles.statBlock}>
-            <Text style={styles.statValue}>{completedCount}</Text>
-            <Text style={styles.statLabel}>done</Text>
-          </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statBlock}>
-            <Text style={styles.statValue}>{pendingCount}</Text>
-            <Text style={styles.statLabel}>open</Text>
-          </View>
-        </View>
-      </View>
-
       {loading ? (
-        <ActivityIndicator color={design.color.teal} />
+        <>
+          {hero}
+          <ActivityIndicator color={design.color.teal} />
+        </>
       ) : (
         <FlatList
           contentContainerStyle={styles.list}
           data={items}
           keyExtractor={(item) => item.id}
-          showsVerticalScrollIndicator={false}
+          ListHeaderComponent={hero}
+          showsVerticalScrollIndicator
+          style={styles.scrollList}
+          testID="today-scroll-list"
           renderItem={({ item }) => {
             if (item.type === 'header') {
               return (
@@ -208,7 +215,7 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   card: {
     gap: 6,
-    padding: 18,
+    padding: 16,
   },
   cardTopline: {
     alignItems: 'flex-start',
@@ -228,7 +235,7 @@ const styles = StyleSheet.create({
   },
   challengeCard: {
     gap: 6,
-    padding: 18,
+    padding: 16,
   },
   container: {
     padding: 20,
@@ -272,21 +279,24 @@ const styles = StyleSheet.create({
   hero: {
     backgroundColor: design.color.primary,
     borderRadius: design.radius.xl,
-    gap: 10,
-    marginBottom: 8,
+    gap: 8,
+    marginBottom: 4,
     overflow: 'hidden',
-    padding: 22,
+    padding: 18,
   },
   list: {
-    paddingBottom: 28,
+    paddingBottom: 132,
   },
   pressable: {
     marginBottom: 12,
   },
+  scrollList: {
+    flex: 1,
+  },
   sectionHeader: {
     gap: 4,
     marginBottom: 12,
-    marginTop: 22,
+    marginTop: 18,
   },
   sectionSubtitle: {
     color: design.color.muted,
@@ -315,22 +325,22 @@ const styles = StyleSheet.create({
     borderRadius: design.radius.lg,
     flexDirection: 'row',
     gap: 18,
-    marginTop: 8,
-    padding: 16,
+    marginTop: 6,
+    padding: 14,
   },
   statValue: {
     color: '#FFFFFF',
-    fontSize: 28,
+    fontSize: 26,
     fontWeight: '900',
   },
   subtitle: {
     color: 'rgba(255,255,255,0.72)',
-    fontSize: 16,
-    lineHeight: 23,
+    fontSize: 15,
+    lineHeight: 21,
   },
   title: {
     color: '#FFFFFF',
-    fontSize: 36,
+    fontSize: 32,
     fontWeight: '900',
     letterSpacing: -1,
   },
