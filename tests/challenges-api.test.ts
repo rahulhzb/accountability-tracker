@@ -2,8 +2,12 @@ import {
   createChallenge,
   getChallenge,
   joinChallengeByInvite,
+  loadChallengeOverview,
   listMyChallenges,
 } from '../src/features/challenges/api';
+import { listFeedEvents } from '../src/features/feed/api';
+import { listActiveGoals } from '../src/features/goals/api';
+import { listChallengeMembers } from '../src/features/members/api';
 import { supabase } from '../src/lib/supabase';
 
 const mockFrom = supabase.from as jest.Mock;
@@ -14,6 +18,18 @@ jest.mock('../src/lib/supabase', () => ({
     from: jest.fn(),
     rpc: jest.fn(),
   },
+}));
+
+jest.mock('../src/features/feed/api', () => ({
+  listFeedEvents: jest.fn(),
+}));
+
+jest.mock('../src/features/goals/api', () => ({
+  listActiveGoals: jest.fn(),
+}));
+
+jest.mock('../src/features/members/api', () => ({
+  listChallengeMembers: jest.fn(),
 }));
 
 describe('challenge api', () => {
@@ -103,5 +119,44 @@ describe('challenge api', () => {
     expect(mockRpc).toHaveBeenCalledWith('join_challenge_by_invite_code', {
       target_invite_code: 'ABC12345',
     });
+  });
+
+  it('loads challenge overview data for the detail hub', async () => {
+    const challenge = {
+      id: 'challenge-1',
+      name: 'Morning Fitness',
+      description: '',
+      invite_code: 'ABC12345',
+      start_date: '2026-05-19',
+      end_date: null,
+      created_by: 'user-1',
+    };
+    const members = [{ userId: 'user-1', role: 'owner' }];
+    const goals = [{ id: 'goal-1', challenge_id: 'challenge-1' }];
+    const recentFeed = [{ id: 'event-1', event_type: 'check_in_done' }];
+    const single = jest.fn().mockResolvedValue({ data: challenge, error: null });
+    const eq = jest.fn(() => ({ single }));
+    const select = jest.fn(() => ({ eq }));
+
+    mockFrom.mockReturnValue({ select });
+    jest.mocked(listChallengeMembers).mockResolvedValue(members as never);
+    jest.mocked(listActiveGoals).mockResolvedValue(goals as never);
+    jest.mocked(listFeedEvents).mockResolvedValue(recentFeed as never);
+
+    await expect(
+      loadChallengeOverview({ challengeId: 'challenge-1', userId: 'user-1' }),
+    ).resolves.toEqual({
+      challenge,
+      goals,
+      members,
+      recentFeed,
+    });
+
+    expect(listChallengeMembers).toHaveBeenCalledWith('challenge-1');
+    expect(listActiveGoals).toHaveBeenCalledWith('user-1', {
+      challengeId: 'challenge-1',
+      type: 'challenge',
+    });
+    expect(listFeedEvents).toHaveBeenCalledWith('challenge-1');
   });
 });

@@ -1,4 +1,7 @@
 import { supabase } from '../../lib/supabase';
+import { FeedEvent, listFeedEvents } from '../feed/api';
+import { Goal, listActiveGoals } from '../goals/api';
+import { ChallengeMember, listChallengeMembers } from '../members/api';
 
 export type Challenge = {
   id: string;
@@ -8,6 +11,13 @@ export type Challenge = {
   start_date: string;
   end_date: string | null;
   created_by: string;
+};
+
+export type ChallengeOverview = {
+  challenge: Challenge;
+  goals: Goal[];
+  members: ChallengeMember[];
+  recentFeed: FeedEvent[];
 };
 
 function inviteCode() {
@@ -60,6 +70,22 @@ export async function getChallenge(challengeId: string) {
   }
 
   return data as Challenge;
+}
+
+export async function loadChallengeOverview(input: { challengeId: string; userId: string }) {
+  const [challenge, members, goals, recentFeed] = await Promise.all([
+    getChallenge(input.challengeId),
+    listChallengeMembers(input.challengeId),
+    listActiveGoals(input.userId, { challengeId: input.challengeId, type: 'challenge' }),
+    listFeedEvents(input.challengeId),
+  ]);
+
+  return {
+    challenge,
+    goals,
+    members,
+    recentFeed,
+  };
 }
 
 export async function joinChallengeByInvite(inviteCode: string) {

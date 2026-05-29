@@ -205,10 +205,10 @@ Likely modified files:
 - Modify: `src/features/home/api.ts`
 - Test: `tests/challenges-api.test.ts`
 
-- [ ] Add challenge detail aggregate helper returning challenge, members, user goals, recent feed.
-- [ ] Keep existing list APIs for simpler screens.
-- [ ] Test aggregate helper composes expected queries.
-- [ ] Commit: `feat: add challenge detail aggregate`
+- [x] Add challenge detail aggregate helper returning challenge, members, user goals, recent feed.
+- [x] Keep existing list APIs for simpler screens.
+- [x] Test aggregate helper composes expected queries.
+- [x] Commit: `feat: add challenge detail aggregate`
 
 ### Task 3.2: Challenge Detail Layout Upgrade
 
