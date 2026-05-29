@@ -216,11 +216,11 @@ Likely modified files:
 - Modify: `app/challenges/[challengeId].tsx`
 - Test: `tests/challenge-feed-screen.test.tsx`
 
-- [ ] Reorganize sections in this order: challenge header, today’s group commitments, members, feed.
-- [ ] Make user check-in action prominent for their own active goals.
-- [ ] Make add-goal secondary once a goal exists.
-- [ ] Show better feed copy such as “Completed” with goal title and date; if profile data is available, show actor name.
-- [ ] Commit: `feat: upgrade challenge detail hub`
+- [x] Reorganize sections in this order: challenge header, today’s group commitments, members, feed.
+- [x] Make user check-in action prominent for their own active goals.
+- [x] Make add-goal secondary once a goal exists.
+- [x] Show better feed copy such as “Completed” with goal title and date; if profile data is available, show actor name.
+- [x] Commit: `feat: upgrade challenge detail hub`
 
 ---
 

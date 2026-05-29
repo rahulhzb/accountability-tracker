@@ -13,10 +13,10 @@ import {
 import { AppButton, AppCard, AppInput, AppScreen, Eyebrow, StatusPill } from '@/components/app-ui';
 import { design } from '@/src/design/theme';
 import { useAuth } from '@/src/features/auth/auth-context';
-import { Challenge, getChallenge } from '@/src/features/challenges/api';
-import { createComment, FeedEvent, listFeedEvents } from '@/src/features/feed/api';
-import { createGoal, Goal, listActiveGoals } from '@/src/features/goals/api';
-import { ChallengeMember, listChallengeMembers } from '@/src/features/members/api';
+import { Challenge, loadChallengeOverview } from '@/src/features/challenges/api';
+import { createComment, FeedEvent } from '@/src/features/feed/api';
+import { createGoal, Goal } from '@/src/features/goals/api';
+import { ChallengeMember } from '@/src/features/members/api';
 
 const labelByEventType = {
   check_in_done: 'Completed',
@@ -24,6 +24,18 @@ const labelByEventType = {
   check_in_skipped: 'Skipped',
   comment_created: 'Commented',
 } as const;
+
+function feedTitle(event: FeedEvent) {
+  const actorName = event.actor_profile?.display_name ?? 'Someone';
+  const goalTitle = event.check_ins?.goals?.title;
+  const action = labelByEventType[event.event_type].toLowerCase();
+
+  if (goalTitle) {
+    return `${actorName} ${action} ${goalTitle}`;
+  }
+
+  return `${actorName} ${action}`;
+}
 
 export default function ChallengeDetailScreen() {
   const { challengeId } = useLocalSearchParams<{ challengeId: string }>();
@@ -48,20 +60,15 @@ export default function ChallengeDetailScreen() {
     setLoading(true);
 
     try {
-      const [nextChallenge, nextEvents, nextMembers, nextGoals] = await Promise.all([
-        getChallenge(challengeId),
-        listFeedEvents(challengeId),
-        listChallengeMembers(challengeId),
-        session?.user.id
-          ? listActiveGoals(session.user.id, { challengeId, type: 'challenge' })
-          : Promise.resolve([]),
-      ]);
+      const overview = session?.user.id
+        ? await loadChallengeOverview({ challengeId, userId: session.user.id })
+        : null;
 
-      if (shouldApply()) {
-        setChallenge(nextChallenge);
-        setEvents(nextEvents);
-        setMembers(nextMembers);
-        setGoals(nextGoals);
+      if (overview && shouldApply()) {
+        setChallenge(overview.challenge);
+        setEvents(overview.recentFeed);
+        setMembers(overview.members);
+        setGoals(overview.goals);
       }
     } catch (error) {
       if (shouldApply()) {
@@ -175,12 +182,47 @@ export default function ChallengeDetailScreen() {
         showsVerticalScrollIndicator
         style={styles.scroll}
         testID="challenge-detail-scroll">
-        <Eyebrow>Challenge</Eyebrow>
-        <Text style={styles.title}>Feed</Text>
-        <Text style={styles.subtitle}>A shared record of commitments, misses, and encouragement.</Text>
+        <AppCard style={styles.hero}>
+          <Eyebrow>Private friend group</Eyebrow>
+          <Text style={styles.title}>{challenge?.name ?? 'Challenge'}</Text>
+          <Text style={styles.subtitle}>
+            {challenge?.description || 'Today’s commitments, members, and accountability feed in one place.'}
+          </Text>
+          {challenge ? (
+            <Text style={styles.inviteCode}>Invite code {challenge.invite_code}</Text>
+          ) : null}
+        </AppCard>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Today's group commitments</Text>
+          {goals.length === 0 ? (
+            <Text style={styles.empty}>No challenge goals yet.</Text>
+          ) : (
+            goals.map((goal) => (
+              <AppCard key={goal.id} style={styles.goalRow}>
+                <View style={styles.goalText}>
+                  <Text style={styles.goalTitle}>{goal.title}</Text>
+                  <Text style={styles.eventMeta}>Deadline {goal.deadline_time}</Text>
+                  <StatusPill status={goal.today_check_in?.status ?? 'pending'} />
+                </View>
+                <AppButton
+                  onPress={() =>
+                    router.push({
+                      params: { goalId: goal.id, timezone: goal.timezone },
+                      pathname: '/check-ins/[goalId]',
+                    })
+                  }
+                  title={goal.today_check_in ? 'Update check-in' : 'Check in now'}
+                />
+              </AppCard>
+            ))
+          )}
+        </View>
 
         <AppCard style={styles.goalCard}>
-          <Text style={styles.goalCardTitle}>Add a group goal</Text>
+          <Text style={styles.goalCardTitle}>
+            {goals.length > 0 ? 'Add another group goal' : 'Add a group goal'}
+          </Text>
           <AppInput
             onChangeText={setGoalTitle}
             placeholder="Daily group commitment"
@@ -196,6 +238,7 @@ export default function ChallengeDetailScreen() {
             disabled={creatingGoal}
             onPress={() => void addChallengeGoal()}
             title={creatingGoal ? 'Adding...' : 'Add group goal'}
+            variant={goals.length > 0 ? 'secondary' : 'primary'}
           />
         </AppCard>
 
@@ -208,9 +251,6 @@ export default function ChallengeDetailScreen() {
               variant="secondary"
             />
           </View>
-          {challenge ? (
-            <Text style={styles.inviteCode}>Invite code {challenge.invite_code}</Text>
-          ) : null}
           {members.length === 1 ? (
             <Text style={styles.empty}>Waiting for friends</Text>
           ) : null}
@@ -230,41 +270,16 @@ export default function ChallengeDetailScreen() {
           ))}
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Your goals in this challenge</Text>
-          {goals.length === 0 ? (
-            <Text style={styles.empty}>No challenge goals yet.</Text>
-          ) : (
-            goals.map((goal) => (
-              <AppCard key={goal.id} style={styles.goalRow}>
-                <View style={styles.goalText}>
-                  <Text style={styles.goalTitle}>{goal.title}</Text>
-                  <Text style={styles.eventMeta}>Deadline {goal.deadline_time}</Text>
-                  <StatusPill status={goal.today_check_in?.status ?? 'pending'} />
-                </View>
-                <AppButton
-                  onPress={() =>
-                    router.push({
-                      params: { goalId: goal.id, timezone: goal.timezone },
-                      pathname: '/check-ins/[goalId]',
-                    })
-                  }
-                  title={goal.today_check_in ? 'Update' : 'Check in'}
-                />
-              </AppCard>
-            ))
-          )}
-        </View>
-
         {loading ? (
           <ActivityIndicator color={design.color.teal} />
         ) : (
           <View style={styles.feedList}>
+            <Text style={styles.sectionTitle}>Feed</Text>
             {events.length === 0 ? <Text style={styles.empty}>No check-ins yet.</Text> : null}
             {events.map((item) => (
               <AppCard key={item.id} style={styles.eventCard}>
                 <View style={styles.eventHeader}>
-                  <Text style={styles.eventLabel}>{labelByEventType[item.event_type]}</Text>
+                  <Text style={styles.eventLabel}>{feedTitle(item)}</Text>
                   <Text style={styles.eventMeta}>{item.check_ins?.local_date ?? 'Today'}</Text>
                 </View>
                 {item.check_ins?.note ? (
@@ -360,6 +375,10 @@ const styles = StyleSheet.create({
     color: design.color.ink,
     fontSize: 17,
     fontWeight: '900',
+  },
+  hero: {
+    gap: 8,
+    padding: 18,
   },
   inviteCode: {
     color: design.color.teal,

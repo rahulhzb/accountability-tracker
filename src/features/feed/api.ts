@@ -11,6 +11,12 @@ export type FeedEvent = {
     note: string | null;
     status: 'done' | 'skipped' | 'missed';
     local_date: string;
+    goals?: {
+      title: string;
+    } | null;
+  } | null;
+  actor_profile?: {
+    display_name: string;
   } | null;
   comments?: {
     id: string;
@@ -23,7 +29,7 @@ export type FeedEvent = {
 export async function listFeedEvents(challengeId: string) {
   const { data, error } = await supabase
     .from('feed_events')
-    .select('*, check_ins(*), comments(*)')
+    .select('*, actor_profile:profiles!feed_events_actor_user_id_fkey(display_name), check_ins(*, goals(title)), comments(*)')
     .eq('challenge_id', challengeId)
     .order('created_at', { ascending: false });
 

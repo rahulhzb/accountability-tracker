@@ -24,7 +24,9 @@ describe('feed api', () => {
     await expect(listFeedEvents('challenge-1')).resolves.toBe(events);
 
     expect(mockFrom).toHaveBeenCalledWith('feed_events');
-    expect(select).toHaveBeenCalledWith('*, check_ins(*), comments(*)');
+    expect(select).toHaveBeenCalledWith(
+      '*, actor_profile:profiles!feed_events_actor_user_id_fkey(display_name), check_ins(*, goals(title)), comments(*)',
+    );
     expect(eq).toHaveBeenCalledWith('challenge_id', 'challenge-1');
     expect(order).toHaveBeenCalledWith('created_at', { ascending: false });
   });
