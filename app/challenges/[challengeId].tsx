@@ -251,23 +251,25 @@ export default function ChallengeDetailScreen() {
               variant="secondary"
             />
           </View>
-          {members.length === 1 ? (
-            <Text style={styles.empty}>Waiting for friends</Text>
-          ) : null}
-          {members.map((member) => (
-            <AppCard key={member.userId} style={styles.memberRow}>
-              <View style={styles.memberAvatar}>
-                <Text style={styles.memberInitial}>{member.displayName.slice(0, 1).toUpperCase()}</Text>
+          <AppCard style={styles.membersCard}>
+            {members.length === 1 ? (
+              <Text style={styles.waitingText}>Waiting for friends</Text>
+            ) : null}
+            {members.map((member) => (
+              <View key={member.userId} style={styles.memberRow}>
+                <View style={styles.memberAvatar}>
+                  <Text style={styles.memberInitial}>{member.displayName.slice(0, 1).toUpperCase()}</Text>
+                </View>
+                <View style={styles.memberText}>
+                  <Text style={styles.memberName}>{member.displayName}</Text>
+                  <Text style={styles.eventMeta}>{member.timezone}</Text>
+                </View>
+                <View style={styles.rolePill}>
+                  <Text style={styles.rolePillText}>{member.role === 'owner' ? 'Owner' : 'Member'}</Text>
+                </View>
               </View>
-              <View style={styles.memberText}>
-                <Text style={styles.memberName}>{member.displayName}</Text>
-                <Text style={styles.eventMeta}>{member.timezone}</Text>
-              </View>
-              <View style={styles.rolePill}>
-                <Text style={styles.rolePillText}>{member.role === 'owner' ? 'Owner' : 'Member'}</Text>
-              </View>
-            </AppCard>
-          ))}
+            ))}
+          </AppCard>
         </View>
 
         {loading ? (
@@ -408,11 +410,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flexDirection: 'row',
     gap: 12,
-    padding: 14,
   },
   memberText: {
     flex: 1,
     gap: 3,
+  },
+  membersCard: {
+    gap: 12,
+    padding: 14,
   },
   note: {
     color: design.color.inkSoft,
@@ -447,6 +452,11 @@ const styles = StyleSheet.create({
     color: design.color.ink,
     fontSize: 20,
     fontWeight: '800',
+  },
+  waitingText: {
+    color: design.color.muted,
+    fontSize: 15,
+    lineHeight: 20,
   },
   subtitle: {
     color: design.color.muted,
