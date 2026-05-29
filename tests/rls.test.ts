@@ -31,6 +31,7 @@ describe('row level security migration', () => {
       'feed_events',
       'comments',
       'device_tokens',
+      'recovery_actions',
     ];
 
     for (const table of tables) {
@@ -126,5 +127,36 @@ describe('row level security migration', () => {
 
   it('indexes challenge memberships by user for my-challenges queries', () => {
     expect(sql).toContain('create index challenge_members_user_idx on public.challenge_members(user_id)');
+  });
+
+  it('models missed-deadline recovery actions for challenge misses', () => {
+    expect(sql).toContain("create type public.missed_rule as enum ('visible_only', 'recovery_note', 'fun_penalty')");
+    expect(sql).toContain("create type public.recovery_action_status as enum ('pending', 'completed')");
+    expect(sql).toContain('missed_rule public.missed_rule not null default \'visible_only\'');
+    expect(sql).toContain("create table public.recovery_actions");
+    expect(sql).toContain('challenge_id uuid not null references public.challenges(id) on delete cascade');
+    expect(sql).toContain('check_in_id uuid not null references public.check_ins(id) on delete cascade');
+    expect(sql).toContain('assigned_user_id uuid not null references public.profiles(id) on delete cascade');
+    expect(sql).toContain('template text not null check (char_length(template) between 1 and 160)');
+    expect(sql).toContain('status public.recovery_action_status not null default \'pending\'');
+    expect(sql).toContain('note text null check (note is null or char_length(note) <= 500)');
+    expect(sql).toContain('completed_at timestamptz null');
+  });
+
+  it('adds recovery lifecycle feed event types', () => {
+    expect(sql).toContain(
+      "create type public.feed_event_type as enum ('check_in_done', 'check_in_skipped', 'check_in_missed', 'comment_created', 'recovery_assigned', 'recovery_completed')",
+    );
+  });
+
+  it('scopes recovery action reads and completion updates to safe boundaries', () => {
+    const readPolicy = policySql('recovery member read');
+    const updatePolicy = policySql('recovery assigned user complete');
+    const insertPolicy = policySql('recovery service role insert');
+
+    expect(readPolicy).toContain('public.is_challenge_member(challenge_id)');
+    expect(updatePolicy).toContain('assigned_user_id = auth.uid()');
+    expect(updatePolicy).toContain("status = 'completed'");
+    expect(insertPolicy).toContain("auth.role() = 'service_role'");
   });
 });

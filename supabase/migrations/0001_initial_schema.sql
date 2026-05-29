@@ -1,7 +1,9 @@
 create type public.goal_status as enum ('active', 'paused', 'archived');
 create type public.check_in_status as enum ('done', 'skipped', 'missed');
 create type public.member_role as enum ('owner', 'member');
-create type public.feed_event_type as enum ('check_in_done', 'check_in_skipped', 'check_in_missed', 'comment_created');
+create type public.missed_rule as enum ('visible_only', 'recovery_note', 'fun_penalty');
+create type public.recovery_action_status as enum ('pending', 'completed');
+create type public.feed_event_type as enum ('check_in_done', 'check_in_skipped', 'check_in_missed', 'comment_created', 'recovery_assigned', 'recovery_completed');
 
 create table public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
@@ -20,6 +22,7 @@ create table public.challenges (
   start_date date not null default current_date,
   end_date date null,
   privacy text not null default 'private' check (privacy = 'private'),
+  missed_rule public.missed_rule not null default 'visible_only',
   created_at timestamptz not null default now(),
   check (end_date is null or end_date >= start_date)
 );
@@ -66,6 +69,19 @@ create table public.feed_events (
   created_at timestamptz not null default now()
 );
 
+create table public.recovery_actions (
+  id uuid primary key default gen_random_uuid(),
+  challenge_id uuid not null references public.challenges(id) on delete cascade,
+  check_in_id uuid not null references public.check_ins(id) on delete cascade,
+  assigned_user_id uuid not null references public.profiles(id) on delete cascade,
+  template text not null check (char_length(template) between 1 and 160),
+  status public.recovery_action_status not null default 'pending',
+  note text null check (note is null or char_length(note) <= 500),
+  completed_at timestamptz null,
+  created_at timestamptz not null default now(),
+  unique (check_in_id)
+);
+
 create table public.comments (
   id uuid primary key default gen_random_uuid(),
   feed_event_id uuid not null references public.feed_events(id) on delete cascade,
@@ -90,6 +106,8 @@ create index goals_challenge_idx on public.goals(challenge_id) where challenge_i
 create index check_ins_user_date_idx on public.check_ins(user_id, local_date desc);
 create index feed_events_challenge_created_idx on public.feed_events(challenge_id, created_at desc);
 create unique index feed_events_checkin_type_unique_idx on public.feed_events(check_in_id, event_type);
+create index recovery_actions_challenge_status_idx on public.recovery_actions(challenge_id, status);
+create index recovery_actions_assigned_status_idx on public.recovery_actions(assigned_user_id, status);
 create index comments_feed_created_idx on public.comments(feed_event_id, created_at asc);
 create index device_tokens_user_idx on public.device_tokens(user_id);
 
@@ -99,6 +117,7 @@ alter table public.challenge_members enable row level security;
 alter table public.goals enable row level security;
 alter table public.check_ins enable row level security;
 alter table public.feed_events enable row level security;
+alter table public.recovery_actions enable row level security;
 alter table public.comments enable row level security;
 alter table public.device_tokens enable row level security;
 
@@ -328,6 +347,20 @@ create policy "feed member insert consistent checkin event" on public.feed_event
         or (ci.status = 'missed' and feed_events.event_type = 'check_in_missed')
       )
   )
+);
+create policy "recovery member read" on public.recovery_actions for select using (
+  public.is_challenge_member(challenge_id)
+);
+create policy "recovery assigned user complete" on public.recovery_actions for update using (
+  assigned_user_id = auth.uid()
+  and public.is_challenge_member(challenge_id)
+) with check (
+  assigned_user_id = auth.uid()
+  and public.is_challenge_member(challenge_id)
+  and status = 'completed'
+);
+create policy "recovery service role insert" on public.recovery_actions for insert with check (
+  auth.role() = 'service_role'
 );
 create policy "comments member read" on public.comments for select using (
   exists (

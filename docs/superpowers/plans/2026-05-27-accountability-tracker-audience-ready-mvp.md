@@ -234,12 +234,12 @@ Likely modified files:
 - Modify: `supabase/migrations/0001_initial_schema.sql`
 - Test: `tests/rls.test.ts`
 
-- [ ] Add `missed_rule` to `challenges` with values `visible_only`, `recovery_note`, `fun_penalty`.
-- [ ] Add `recovery_actions` table with `challenge_id`, `check_in_id`, `assigned_user_id`, `template`, `status`, `note`, `completed_at`.
-- [ ] Add feed event types for recovery assigned/completed.
-- [ ] Add RLS: members can read; assigned user can update completion; service role can create.
-- [ ] Test policies by schema assertions.
-- [ ] Commit: `feat: add recovery action model`
+- [x] Add `missed_rule` to `challenges` with values `visible_only`, `recovery_note`, `fun_penalty`.
+- [x] Add `recovery_actions` table with `challenge_id`, `check_in_id`, `assigned_user_id`, `template`, `status`, `note`, `completed_at`.
+- [x] Add feed event types for recovery assigned/completed.
+- [x] Add RLS: members can read; assigned user can update completion; service role can create.
+- [x] Test policies by schema assertions.
+- [x] Commit: `feat: add recovery action model`
 
 ### Task 4.2: Recovery Creation From Missed Job
 
