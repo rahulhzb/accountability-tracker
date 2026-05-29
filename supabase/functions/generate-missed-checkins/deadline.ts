@@ -2,6 +2,9 @@ export type ActiveGoal = {
   id: string;
   owner_user_id: string;
   challenge_id: string | null;
+  challenges?: {
+    missed_rule: 'visible_only' | 'recovery_note' | 'fun_penalty';
+  } | null;
   created_at: string;
   deadline_time: string;
   timezone: string;
@@ -11,6 +14,7 @@ export type MissedCheckInCandidate = {
   challengeId: string | null;
   goalId: string;
   localDate: string;
+  missedRule: 'visible_only' | 'recovery_note' | 'fun_penalty';
   userId: string;
 };
 
@@ -97,6 +101,7 @@ export function buildMissedCheckInCandidate(
     challengeId: goal.challenge_id,
     goalId: goal.id,
     localDate: candidateLocalDate,
+    missedRule: goal.challenges?.missed_rule ?? 'visible_only',
     userId: goal.owner_user_id,
   };
 }

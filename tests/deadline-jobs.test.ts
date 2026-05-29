@@ -24,6 +24,7 @@ describe('missed check-in deadline job', () => {
       challengeId: 'challenge-1',
       goalId: 'goal-1',
       localDate: '2026-05-20',
+      missedRule: 'visible_only',
       userId: 'user-1',
     });
   });
@@ -45,6 +46,7 @@ describe('missed check-in deadline job', () => {
       challengeId: null,
       goalId: 'goal-1',
       localDate: '2026-05-20',
+      missedRule: 'visible_only',
       userId: 'user-1',
     });
   });
@@ -90,5 +92,20 @@ describe('missed check-in deadline job', () => {
     expect(functionSource).toContain('isDuplicateCheckInError(insertError)');
     expect(functionSource).toContain('ensureMissedFeedEvent(candidate, existingCheckIn.id)');
     expect(functionSource).toContain('Goal ${goal.id}:');
+  });
+
+  it('creates recovery actions only for challenges with recovery rules', () => {
+    const functionSource = readFileSync(
+      join(__dirname, '..', 'supabase', 'functions', 'generate-missed-checkins', 'index.ts'),
+      'utf8',
+    );
+
+    expect(functionSource).toContain('challenges!goals_challenge_id_fkey(missed_rule)');
+    expect(functionSource).toContain('ensureRecoveryAction(candidate, checkIn.id)');
+    expect(functionSource).toContain("candidate.missedRule === 'visible_only'");
+    expect(functionSource).toContain(".from('recovery_actions')");
+    expect(functionSource).toContain("status: 'pending'");
+    expect(functionSource).toContain("event_type: 'recovery_assigned'");
+    expect(functionSource).toContain("template: recoveryTemplate(candidate.missedRule)");
   });
 });

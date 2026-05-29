@@ -40,6 +40,56 @@ async function ensureMissedFeedEvent(candidate: {
   return { error, inserted: !error && (data?.length ?? 0) > 0 };
 }
 
+function recoveryTemplate(missedRule: 'visible_only' | 'recovery_note' | 'fun_penalty') {
+  if (missedRule === 'fun_penalty') {
+    return 'Do a quick comeback challenge chosen by the group.';
+  }
+
+  return 'Post a short recovery note for the group.';
+}
+
+async function ensureRecoveryAction(candidate: {
+  challengeId: string | null;
+  missedRule: 'visible_only' | 'recovery_note' | 'fun_penalty';
+  userId: string;
+}, checkInId: string): Promise<{ error: { message: string } | null; inserted: boolean }> {
+  if (!candidate.challengeId || candidate.missedRule === 'visible_only') {
+    return { error: null, inserted: false };
+  }
+
+  const { data, error } = await supabase
+    .from('recovery_actions')
+    .upsert(
+      {
+        assigned_user_id: candidate.userId,
+        challenge_id: candidate.challengeId,
+        check_in_id: checkInId,
+        status: 'pending',
+        template: recoveryTemplate(candidate.missedRule),
+      },
+      { ignoreDuplicates: true, onConflict: 'check_in_id' },
+    )
+    .select('id');
+
+  if (error || (data?.length ?? 0) === 0) {
+    return { error, inserted: false };
+  }
+
+  const { error: feedError } = await supabase
+    .from('feed_events')
+    .upsert(
+      {
+        actor_user_id: candidate.userId,
+        challenge_id: candidate.challengeId,
+        check_in_id: checkInId,
+        event_type: 'recovery_assigned',
+      },
+      { ignoreDuplicates: true, onConflict: 'check_in_id,event_type' },
+    );
+
+  return { error: feedError, inserted: !feedError };
+}
+
 Deno.serve(async (request) => {
   const authorization = request.headers.get('authorization') ?? '';
 
@@ -52,11 +102,12 @@ Deno.serve(async (request) => {
   let duplicates = 0;
   let inserted = 0;
   let repairedFeedEvents = 0;
+  let recoveryActions = 0;
   let skippedBeforeFirstDeadline = 0;
 
   const { data: goals, error } = await supabase
     .from('goals')
-    .select('id, owner_user_id, challenge_id, created_at, deadline_time, timezone')
+    .select('id, owner_user_id, challenge_id, created_at, deadline_time, timezone, challenges!goals_challenge_id_fkey(missed_rule)')
     .eq('status', 'active');
 
   if (error) {
@@ -118,11 +169,18 @@ Deno.serve(async (request) => {
 
         if (existingCheckIn) {
           const feedResult = await ensureMissedFeedEvent(candidate, existingCheckIn.id);
+          const recoveryResult = await ensureRecoveryAction(candidate, existingCheckIn.id);
 
           if (feedResult.error) {
             errors.push(feedResult.error.message);
           } else if (feedResult.inserted) {
             repairedFeedEvents += 1;
+          }
+
+          if (recoveryResult.error) {
+            errors.push(recoveryResult.error.message);
+          } else if (recoveryResult.inserted) {
+            recoveryActions += 1;
           }
         }
 
@@ -136,9 +194,16 @@ Deno.serve(async (request) => {
     inserted += 1;
 
     const feedResult = await ensureMissedFeedEvent(candidate, checkIn.id);
+    const recoveryResult = await ensureRecoveryAction(candidate, checkIn.id);
 
     if (feedResult.error) {
       errors.push(feedResult.error.message);
+    }
+
+    if (recoveryResult.error) {
+      errors.push(recoveryResult.error.message);
+    } else if (recoveryResult.inserted) {
+      recoveryActions += 1;
     }
   }
 
@@ -151,6 +216,7 @@ Deno.serve(async (request) => {
       inserted,
       ok: errors.length === 0,
       repaired_feed_events: repairedFeedEvents,
+      recovery_actions: recoveryActions,
       skipped_before_first_deadline: skippedBeforeFirstDeadline,
     },
     { status: errors.length === 0 ? 200 : 500 },

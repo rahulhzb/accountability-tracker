@@ -247,11 +247,11 @@ Likely modified files:
 - Modify: `supabase/functions/generate-missed-checkins/index.ts`
 - Test: `tests/deadline-jobs.test.ts`
 
-- [ ] When missed check-in is generated for a challenge with recovery rule, create pending recovery action.
-- [ ] For `visible_only`, create no recovery action.
-- [ ] Add feed event for recovery assignment.
-- [ ] Test missed check-in creates recovery action only for configured challenges.
-- [ ] Commit: `feat: create recovery actions for misses`
+- [x] When missed check-in is generated for a challenge with recovery rule, create pending recovery action.
+- [x] For `visible_only`, create no recovery action.
+- [x] Add feed event for recovery assignment.
+- [x] Test missed check-in creates recovery action only for configured challenges.
+- [x] Commit: `feat: create recovery actions for misses`
 
 ### Task 4.3: Recovery UI
 
